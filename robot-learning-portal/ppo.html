@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPO近端策略优化：从直觉到手算</title>
+<style>
+:root{--bg:#f5f7fb;--paper:#fff;--ink:#172033;--muted:#586579;--blue:#2457c5;--bluebg:#edf3ff;--green:#16794b;--greenbg:#eaf8f0;--orange:#9a5700;--orangebg:#fff4df;--line:#dce3ee;--code:#101828}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 system-ui,-apple-system,"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif}
+header{background:linear-gradient(135deg,#14284f,#2457c5);color:white;padding:42px 20px 34px}header .wrap,main{max-width:980px;margin:auto}h1{font-size:clamp(1.8rem,4vw,2.7rem);line-height:1.25;margin:.3em 0}header p{max-width:760px;color:#e3ebff;margin:12px 0}
+main{padding:24px 16px 60px}.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:22px;margin:18px 0;box-shadow:0 4px 18px #17203308}
+h2{font-size:1.45rem;margin:.15em 0 .6em}h3{font-size:1.1rem;margin:1em 0 .35em}p{margin:.5em 0}ul,ol{padding-left:1.4em}li{margin:.28em 0}.lead{font-size:1.08rem}.note{padding:13px 15px;border-radius:10px;background:var(--bluebg);border-left:4px solid var(--blue);margin:14px 0}.good{background:var(--greenbg);border-left-color:var(--green)}.warn{background:var(--orangebg);border-left-color:var(--orange)}
+.eq{overflow-x:auto;background:#f7f9fc;border:1px solid var(--line);padding:14px;border-radius:10px;text-align:center;font:1.03rem/1.9 Georgia,"Times New Roman",serif;margin:12px 0}.small{font-size:.9rem;color:var(--muted)}table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.95rem}th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}th{background:#f0f4fa}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#f0f3f8;padding:.1em .3em;border-radius:4px;overflow-wrap:anywhere}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.step{border:1px solid var(--line);border-radius:12px;padding:13px;background:#fbfcff}.step b{color:var(--blue)}.pill{display:inline-block;border-radius:999px;padding:2px 9px;background:#e9efff;color:#2449a4;font-size:.8rem;font-weight:650}
+footer{max-width:980px;margin:auto;padding:0 16px 36px;color:var(--muted);font-size:.9rem}
+@media print{body{background:white;font-size:11pt}header{background:white;color:#172033;padding:12px 0;border-bottom:2px solid #2457c5}header p{color:#334155}.card{box-shadow:none;break-inside:avoid;padding:15px;margin:12px 0}main{padding:10px 0}a{color:inherit} .no-print{display:none}}
+
+/* MDP additions */
+.maze-layout{display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,1fr);gap:18px;align-items:start}
+.maze{display:grid;grid-template-columns:repeat(4,minmax(48px,1fr));gap:7px;max-width:390px;margin:12px auto}
+.cell{aspect-ratio:1/1;border:1px solid var(--line);border-radius:10px;background:#f8fafc;display:flex;align-items:center;justify-content:center;font-size:1.45rem;font-weight:700}
+.cell.wall{background:#334155;color:white}.cell.goal{background:#eaf8f0;color:#16794b}.cell.agent{background:#edf3ff;border:2px solid #2457c5;color:#2457c5}
+.controls{display:grid;grid-template-columns:repeat(3,58px);gap:7px;justify-content:center;margin:14px 0}
+.controls button,.action-btn{border:1px solid #cbd5e1;border-radius:9px;padding:10px;background:#fff;color:var(--ink);font:inherit;cursor:pointer}
+.controls button:hover,.action-btn:hover{background:var(--bluebg);border-color:var(--blue)}
+.controls button:disabled{opacity:.35;cursor:not-allowed}.metric{border:1px solid var(--line);border-radius:10px;padding:10px;margin:7px 0;background:#fbfcff}.metric b{color:var(--blue)}
+@media(max-width:680px){.maze-layout{grid-template-columns:1fr}.maze{max-width:330px}}
+
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<div class="pill">强化学习学习笔记</div>
+<h1>PPO 近端策略优化算法</h1>
+<p class="lead">从直觉、核心公式，到一个可逐步核算的数字例子，再到训练伪代码与大语言模型中的应用。</p>
+<p>目标：理解 PPO 为什么需要概率比率、优势函数与 Clip，以及它们在一次策略更新中如何配合。</p>
+</div></header>
+<main>
+<section class="card">
+<h2>0. 一页先看懂 PPO</h2>
+<p><strong>PPO（Proximal Policy Optimization，近端策略优化）</strong>是一种策略梯度强化学习算法。它用当前策略采样数据，再通过裁剪目标函数限制“过度改变策略”带来的优化收益，让更新相对稳定。</p>
+<div class="steps">
+<div class="step"><b>① 采样</b><br>旧策略与环境交互，收集状态、动作、奖励和旧策略概率。</div>
+<div class="step"><b>② 估值</b><br>Critic 估计状态价值，使用 TD/GAE 计算优势。</div>
+<div class="step"><b>③ 更新</b><br>Actor 最大化 PPO-Clip 目标；Critic 拟合回报。</div>
+<div class="step"><b>④ 重复</b><br>完成若干轮小批量更新后，使用新策略重新采样。</div>
+</div>
+<div class="note"><strong>记忆口诀：</strong>优势决定“往哪边改”，概率比率衡量“改了多少”，Clip 让过大的有利变化不再获得额外目标收益。</div>
+</section>
+
+
+<section class="card" id="mdp">
+<h2>1. 新增基础：MDP（马尔可夫决策过程）</h2>
+<p class="lead"><strong>MDP 描述强化学习问题是什么；PPO 则是一种在这个问题中学习行动策略的方法。</strong>在进入 PPO 的 Actor、Critic、GAE 之前，先明确智能体如何与环境交互。</p>
+<div class="eq">MDP = (S, A, P, R, γ)</div>
+<table><thead><tr><th>要素</th><th>意思</th><th>迷宫示例</th><th>在 PPO 中的关联</th></tr></thead><tbody>
+<tr><td><strong>S：状态空间</strong></td><td>所有可能的状态</td><td>机器人当前所在格子</td><td>状态 <code>sₜ</code> 是 Actor 和 Critic 的输入</td></tr>
+<tr><td><strong>A：动作空间</strong></td><td>所有可选动作</td><td>上、下、左、右</td><td>Actor 根据策略分布选择 <code>aₜ</code></td></tr>
+<tr><td><strong>P：状态转移</strong></td><td><code>P(s'|s,a)</code>：执行动作后转到下一状态的概率</td><td>向右通常走到右边一格；随机环境也可能打滑</td><td>环境执行动作并返回下一状态</td></tr>
+<tr><td><strong>R：奖励</strong></td><td>环境对当前行为/转移给出的反馈</td><td>每步 −1，到终点额外 +10</td><td>用于计算回报、TD 误差和 GAE</td></tr>
+<tr><td><strong>γ：折扣因子</strong></td><td>未来奖励在当前回报中的权重</td><td><code>γ=0.9</code> 时下一步奖励乘 0.9</td><td>进入回报和 TD/GAE 计算</td></tr>
+</tbody></table>
+<div class="note"><strong>马尔可夫性质：</strong>状态应包含预测下一状态所需的相关信息。给定当前状态和动作后，下一状态的分布不必再额外依赖完整历史：<code>P(sₜ₊₁ | sₜ,aₜ,历史)=P(sₜ₊₁ | sₜ,aₜ)</code>。若只记录机器人位置，却忽略影响运动的速度，位置可能不是充分的状态。</div>
+<h3>可交互迷宫：亲自执行状态转移</h3>
+<p>点击方向按钮，观察当前位置、动作、奖励与累计折扣回报。这个小环境是确定性的教学例子：每走一步奖励 −1，到达终点额外 +10；撞墙或边界则留在原地并得到 −2。它演示的是 MDP 环境交互，不会在浏览器里实际训练 PPO。</p>
+<div class="maze-layout">
+<div>
+<div id="mazeGrid" class="maze" aria-label="可交互迷宫"></div>
+<div class="controls" aria-label="移动控制">
+<span></span><button type="button" data-move="up" aria-label="向上">↑</button><span></span>
+<button type="button" data-move="left" aria-label="向左">←</button><button type="button" data-move="down" aria-label="向下">↓</button><button type="button" data-move="right" aria-label="向右">→</button>
+</div>
+<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="action-btn" id="resetMaze" type="button">重置迷宫</button><button class="action-btn" id="autoMaze" type="button">演示一条路线</button></div>
+</div>
+<div>
+<div class="metric"><b>当前状态 sₜ</b><div id="mdpState">(0, 0)</div></div>
+<div class="metric"><b>刚执行的动作 aₜ</b><div id="mdpAction">尚未移动</div></div>
+<div class="metric"><b>即时奖励 rₜ</b><div id="mdpReward">—</div></div>
+<div class="metric"><b>累计折扣回报 Gₜ</b><div id="mdpReturn">0.00</div><div class="small">每一步按 γ=0.9 折扣；终点额外 +10。</div></div>
+<div class="metric"><b>环境反馈</b><div id="mdpMessage" aria-live="polite">从起点出发，尝试到达绿色终点。</div></div>
+</div>
+</div>
+<h3>一次交互如何记录？</h3>
+<div class="eq">(sₜ, aₜ) → (rₜ, sₜ₊₁)</div>
+<p>每次按键都产生一条经验记录：当前状态、动作、奖励、下一状态。PPO 采样时会收集大量类似记录，再用奖励与价值估计计算优势，最后优化策略。</p>
+</section>
+
+<section class="card">
+<h2>2. PPO 的组件与符号</h2>
+<table><thead><tr><th>符号</th><th>含义</th><th>直觉</th></tr></thead><tbody>
+<tr><td><code>sₜ</code></td><td>时刻 t 的状态</td><td>智能体当前看到的情况</td></tr>
+<tr><td><code>aₜ</code></td><td>时刻 t 采取的动作</td><td>在该状态下做了什么</td></tr>
+<tr><td><code>πθ(a|s)</code></td><td>参数为 θ 的策略对动作的概率</td><td>Actor 的行为倾向</td></tr>
+<tr><td><code>Vφ(s)</code></td><td>Critic 对状态价值的估计</td><td>从当前状态出发，未来大概能得到多少回报</td></tr>
+<tr><td><code>Q(s,a)</code></td><td>状态-动作价值</td><td>在 s 做 a 后的预期回报</td></tr>
+<tr><td><code>Âₜ</code></td><td>优势估计</td><td>动作比当前基准表现好多少</td></tr>
+<tr><td><code>rₜ(θ)</code></td><td>新旧策略概率比</td><td>新策略相对旧策略改变了多少</td></tr>
+<tr><td><code>ε</code></td><td>裁剪阈值，常见起点为 0.2</td><td>目标函数对概率比变化的敏感范围</td></tr>
+</tbody></table>
+<h3>Actor-Critic 分工</h3>
+<ul><li><strong>Actor（策略网络）</strong>：输出动作分布，学习如何行动。</li><li><strong>Critic（价值网络）</strong>：预测状态价值，为优势估计提供基线。</li></ul>
+<p>PPO 通常采用 Actor-Critic 结构，但 PPO-Clip 的核心并不是某一种网络架构，而是它的策略优化目标。</p>
+</section>
+
+<section class="card">
+<h2>3. 三个核心公式</h2>
+<h3>公式 A：概率比率</h3>
+<div class="eq">rₜ(θ) = π<sub>θ</sub>(aₜ | sₜ) / π<sub>θold</sub>(aₜ | sₜ)</div>
+<p>若旧策略给某动作的概率为 0.40，新策略为 0.50，则 <code>r = 0.50 / 0.40 = 1.25</code>，也就是该动作的概率相对提高了 25%。</p>
+<h3>公式 B：优势函数</h3>
+<div class="eq">A(sₜ,aₜ) = Q(sₜ,aₜ) − V(sₜ)</div>
+<p><code>A &gt; 0</code> 表示动作比价值基准预期好；<code>A &lt; 0</code> 表示比预期差。实践中通常用 GAE 估计优势，而不是直接知道真实的 Q 值。</p>
+<h3>公式 C：PPO-Clip 目标（核心）</h3>
+<div class="eq">L<sup>CLIP</sup>(θ) = Eₜ [ min( rₜ(θ) Âₜ,<br>clip(rₜ(θ), 1−ε, 1+ε) Âₜ ) ]</div>
+<p>其中 <code>clip(x, 1−ε, 1+ε)</code> 将 x 截到给定区间；<code>min</code> 选择更保守的目标值。算法通常最大化该目标。</p>
+<div class="note warn"><strong>重要澄清：</strong>Clip 不是把实际策略概率硬性限制在 [0.8, 1.2]，也不是严格的信赖域约束。它裁剪的是目标函数中的概率比率项；实际比率仍可能超出区间。</div>
+</section>
+
+<section class="card">
+<h2>4. 数字手算：一次 PPO-Clip 目标计算</h2>
+<p>假设某个已采样动作的优势是 <code>Â = +2</code>，裁剪阈值 <code>ε = 0.2</code>，所以裁剪区间为 <code>[0.8, 1.2]</code>。</p>
+<table><thead><tr><th>情况</th><th>概率比 r</th><th>未裁剪项 rÂ</th><th>裁剪项 clip(r)Â</th><th>最终 min</th></tr></thead><tbody>
+<tr><td>A：概率相对提高 10%</td><td>1.1</td><td>2.2</td><td>2.2</td><td><strong>2.2</strong></td></tr>
+<tr><td>B：概率相对提高 50%</td><td>1.5</td><td>3.0</td><td>2.4</td><td><strong>2.4</strong></td></tr>
+<tr><td>C：概率相对降低 10%</td><td>0.9</td><td>1.8</td><td>1.8</td><td><strong>1.8</strong></td></tr>
+</tbody></table>
+<p>在情况 B 中，动作优势为正，继续把它的概率从旧策略基础上大幅提高，会让未裁剪项继续变大；但裁剪后的目标收益停在 2.4。对这个样本而言，目标函数不会因为超出上界而继续鼓励更大概率。</p>
+<h3>再看负优势动作</h3>
+<p>设 <code>Â = −2</code>、<code>ε = 0.2</code>：</p>
+<table><thead><tr><th>概率比 r</th><th>未裁剪项 rÂ</th><th>裁剪项</th><th>最终 min</th><th>解释</th></tr></thead><tbody>
+<tr><td>0.9</td><td>−1.8</td><td>−1.8</td><td>−1.8</td><td>降低差动作概率，目标随之改善</td></tr>
+<tr><td>0.5</td><td>−1.0</td><td>−1.6</td><td>−1.6</td><td>降低幅度很大后，裁剪机制不再给过度降低带来额外目标收益</td></tr>
+<tr><td>1.3</td><td>−2.6</td><td>−2.4</td><td>−2.6</td><td>提高差动作概率会使目标更差</td></tr>
+</tbody></table>
+<div class="note good"><strong>核心理解：</strong>正优势样本的概率提高过头时会被上界保护；负优势样本的概率降低过头时会被下界保护。Clip 对“有利于目标的过大变化”采取保守处理，而不是简单地把所有变化都截断。</div>
+</section>
+
+<section class="card">
+<h2>5. 从奖励计算优势：一个小型 GAE 例子</h2>
+<p>GAE（Generalized Advantage Estimation，广义优势估计）把多个时刻的 TD 误差加权累加，通常在偏差与方差之间折中。</p>
+<div class="eq">δₜ = rₜ + γ V(sₜ₊₁) − V(sₜ)</div>
+<div class="eq">Âₜ = δₜ + γλ δₜ₊₁ + (γλ)² δₜ₊₂ + …</div>
+<p>假设某段轨迹的价值估计和奖励如下，且采用 <code>γ = 0.9</code>、<code>λ = 0.8</code>。为便于手算，假设轨迹在 t=2 后终止，终止后价值为 0：</p>
+<table><thead><tr><th>时刻</th><th>奖励 rₜ</th><th>V(sₜ)</th><th>V(sₜ₊₁)</th><th>TD 误差 δₜ</th></tr></thead><tbody>
+<tr><td>0</td><td>1</td><td>0.5</td><td>0.6</td><td>1 + 0.9×0.6 − 0.5 = <strong>1.04</strong></td></tr>
+<tr><td>1</td><td>0</td><td>0.6</td><td>0.4</td><td>0 + 0.9×0.4 − 0.6 = <strong>−0.24</strong></td></tr>
+<tr><td>2</td><td>2</td><td>0.4</td><td>0（终止）</td><td>2 + 0 − 0.4 = <strong>1.60</strong></td></tr>
+</tbody></table>
+<p>由于 <code>γλ = 0.72</code>：</p>
+<div class="eq">Â₂ = 1.60</div>
+<div class="eq">Â₁ = −0.24 + 0.72×1.60 = <strong>0.912</strong></div>
+<div class="eq">Â₀ = 1.04 + 0.72×(−0.24) + 0.72²×1.60 ≈ <strong>1.697</strong></div>
+<p>这说明优势不只由当前即时奖励决定，后续时刻的 TD 误差也会以衰减权重影响当前优势。真实训练中通常按轨迹批量计算，并正确处理终止与时间截断。</p>
+</section>
+
+<section class="card">
+<h2>6. Critic 怎么训练？</h2>
+<p>常见做法是先用优势与价值估计构造回报目标，例如：</p>
+<div class="eq">R̂ₜ = Âₜ + V(sₜ)</div>
+<p>然后最小化价值损失：</p>
+<div class="eq">L<sub>value</sub> = Eₜ [ (V<sub>φ</sub>(sₜ) − R̂ₜ)² ]</div>
+<p>Actor 用优势判断动作相对好坏；Critic 则努力让价值预测接近回报目标。价值网络预测更准确，通常有助于改善优势估计质量。</p>
+<h3>总损失的常见写法</h3>
+<p>如果把策略目标写成要最大化的形式：</p>
+<div class="eq">L = L<sub>CLIP</sub> − c<sub>v</sub> L<sub>value</sub> + c<sub>e</sub> H(π)</div>
+<p>这里 <code>H(π)</code> 是策略熵，鼓励探索。若深度学习代码统一使用“最小化 loss”的约定，通常会把策略目标取负，并相应组合价值损失与熵项。具体符号会因实现而不同。</p>
+</section>
+
+<section class="card">
+<h2>7. PPO 的训练循环（伪代码）</h2>
+<pre style="white-space:pre-wrap;background:#101828;color:#e8eef8;padding:16px;border-radius:12px;overflow:auto"><code>初始化 Actor 参数 θ、Critic 参数 φ
+
+重复每一轮：
+    使用旧策略 π_old 与环境交互
+    收集 states、actions、rewards、done、log_probs_old、values
+    用奖励、价值估计计算 returns 和 advantages（常用 GAE）
+
+    对同一批数据进行若干 epoch：
+        划分 minibatches
+        计算 log_probs_new
+        ratio = exp(log_probs_new - log_probs_old)
+        surrogate1 = ratio * advantages
+        surrogate2 = clip(ratio, 1-ε, 1+ε) * advantages
+        policy_objective = mean(min(surrogate1, surrogate2))
+        value_loss = mean((values_new - returns)^2)
+        entropy = mean(policy_entropy)
+
+        按实现约定组合目标并反向传播
+        更新 Actor / Critic 参数
+
+    将更新后的策略用于下一轮采样</code></pre>
+<div class="note"><strong>实现提示：</strong>用 log probability 相减再取指数，通常比直接计算两个很小的概率之比更稳定。实践中还会涉及优势标准化、梯度裁剪、学习率调度、价值损失裁剪或 KL 监控等工程选项。</div>
+</section>
+
+<section class="card">
+<h2>8. PPO 的优点、局限与常见误解</h2>
+<h3>优点</h3><ul><li>目标函数简单，容易与自动微分和小批量优化结合。</li><li>在很多连续控制与离散动作任务中表现稳健。</li><li>比 TRPO 更容易实现，不需要每一步都求解复杂的信赖域约束问题。</li></ul>
+<h3>局限</h3><ul><li>属于 on-policy 方法，采样数据通常不能像离策略方法那样长期重复利用。</li><li>性能对奖励尺度、优势估计、学习率、更新轮数等超参数仍较敏感。</li><li>Clip 并不保证策略分布变化一定很小，也不保证每轮更新都提升真实环境回报。</li></ul>
+<h3>常见误解</h3><ul><li><strong>误解：</strong>Clip 把真实概率比硬性限制在 [0.8, 1.2]。<br><strong>正确：</strong>裁剪的是目标函数中的比率项，真实比率可能越界。</li><li><strong>误解：</strong>PPO 每次只更新一次。<br><strong>正确：</strong>通常会对一批新采样数据做多个 epoch 的小批量更新。</li><li><strong>误解：</strong>优势为正就代表动作一定拿到正奖励。<br><strong>正确：</strong>优势表示相对于价值基准的好坏，不等同于即时奖励的正负。</li></ul>
+</section>
+
+<section class="card">
+<h2>9. PPO 在大语言模型 RLHF 中的角色</h2>
+<p>在语言模型中，状态可以理解为已生成的上下文，动作是下一个 Token。策略模型产生回答，奖励模型依据偏好给出奖励，PPO 再更新语言模型。</p>
+<div class="steps">
+<div class="step"><b>语言模型</b><br>根据上下文逐 Token 生成回答。</div>
+<div class="step"><b>奖励模型</b><br>为回答质量或偏好提供标量奖励。</div>
+<div class="step"><b>PPO 更新</b><br>根据优势更新策略，通常另加 KL 惩罚，避免偏离参考模型过远。</div>
+</div>
+<div class="note warn"><strong>区分两个机制：</strong>PPO-Clip 限制裁剪目标对过大概率比变化的收益；RLHF 中的 KL 惩罚衡量当前策略与参考策略的分布差异。二者可以同时存在，但不是同一项。</div>
+</section>
+
+<section class="card">
+<h2>10. 入门超参数参考</h2>
+<table><thead><tr><th>参数</th><th>常见起点</th><th>注意</th></tr></thead><tbody>
+<tr><td>Clip ε</td><td>0.2</td><td>不是所有任务都适用；需结合 KL、回报与训练稳定性观察。</td></tr>
+<tr><td>折扣因子 γ</td><td>0.99</td><td>长时序任务常用较高值。</td></tr>
+<tr><td>GAE λ</td><td>0.95</td><td>控制优势估计偏差与方差的折中。</td></tr>
+<tr><td>学习率</td><td>例如 3×10⁻⁴</td><td>依模型规模和任务而定。</td></tr>
+<tr><td>更新 epoch</td><td>例如 5–10</td><td>过多更新可能使策略过度拟合当前批数据。</td></tr>
+<tr><td>熵系数</td><td>依任务设置</td><td>探索需求越高，越值得关注熵项。</td></tr>
+</tbody></table>
+<p class="small">以上是教学用起点，不是通用最优配置。训练时建议同时监控平均回报、策略熵、近似 KL、Clip fraction、价值损失和梯度范数。</p>
+</section>
+
+<section class="card">
+<h2>11. 复习检查</h2>
+<ol>
+<li>如果优势 <code>Âₜ &gt; 0</code>，策略通常倾向于如何调整该动作的概率？</li>
+<li>如果 <code>r=1.5</code>、<code>ε=0.2</code>、<code>Â=2</code>，PPO-Clip 单样本目标是多少？</li>
+<li>为什么 PPO 要使用旧策略采样，并保存旧策略的 log probability？</li>
+<li>Clip 和 KL 惩罚是同一个机制吗？</li>
+</ol>
+<details><summary><strong>点击查看参考答案</strong></summary>
+<ol><li>倾向于提高该动作概率，但过大的有利变化会受到裁剪目标的限制。</li><li><code>min(1.5×2, 1.2×2) = min(3.0, 2.4) = 2.4</code>。</li><li>概率比需要比较新旧策略在同一采样动作上的概率；旧 log probability 可稳定地计算比率。</li><li>不是。Clip 是目标函数的裁剪机制；KL 惩罚直接对策略分布差异施加惩罚。</li></ol>
+</details>
+</section>
+
+<section class="card">
+<h2>12. 推荐资料</h2>
+<ul>
+<li>Schulman 等人，<em>Proximal Policy Optimization Algorithms</em>（2017）：PPO 原始论文。</li>
+<li>OpenAI Spinning Up：<a href="https://spinningup.openai.com/en/latest/algorithms/ppo.html" target="_blank" rel="noopener noreferrer">PPO 算法说明</a>。</li>
+<li>建议学习顺序：策略梯度 → Actor-Critic → TD 与 GAE → PPO-Clip → 实现与调参。</li>
+</ul>
+<div class="note good"><strong>最终记忆：</strong>优势给方向，概率比给尺度，Clip 让过度有利的策略变化不再持续获得额外目标收益；Critic 和 GAE 则帮助估计动作相对好坏。</div>
+</section>
+</main>
+<footer>学习笔记｜可离线保存。浏览器中打开后可阅读；如需纸质版，可使用浏览器“打印”并选择“另存为 PDF”。</footer>
+
+<script>
+(function(){
+ const grid=document.getElementById('mazeGrid'); if(!grid)return;
+ // 4x4 grid: S=(0,0), walls at (1,0),(2,1),(1,2), goal=(3,3)
+ const rows=4, cols=4, start={r:0,c:0}, goal={r:3,c:3};
+ const walls=new Set(['1,0','2,1','1,2']);
+ const labels={up:'向上 ↑',down:'向下 ↓',left:'向左 ←',right:'向右 →'};
+ let pos={...start}, done=false, steps=0, discountedReturn=0, discount=1, lastAction='尚未移动', lastReward=null;
+ function key(p){return p.r+','+p.c}
+ function draw(){
+   grid.innerHTML='';
+   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+     const k=r+','+c, el=document.createElement('div'); el.className='cell';
+     if(walls.has(k)){el.classList.add('wall');el.textContent='■';el.title='墙壁';}
+     else if(r===goal.r&&c===goal.c){el.classList.add('goal');el.textContent=(pos.r===r&&pos.c===c)?'🤖':'G';el.title='终点';}
+     else if(pos.r===r&&pos.c===c){el.classList.add('agent');el.textContent='🤖';el.title='机器人当前位置';}
+     else {el.textContent='';}
+     if(pos.r===r&&pos.c===c&&!walls.has(k))el.classList.add('agent');
+     grid.appendChild(el);
+   }
+   document.getElementById('mdpState').textContent='('+pos.r+', '+pos.c+')'+(done?'（已到终点）':'');
+   document.getElementById('mdpAction').textContent=lastAction;
+   document.getElementById('mdpReward').textContent=lastReward===null?'—':String(lastReward);
+   document.getElementById('mdpReturn').textContent=discountedReturn.toFixed(2);
+   document.querySelectorAll('[data-move]').forEach(b=>b.disabled=done);
+ }
+ function move(dir){if(done)return;
+   let nr=pos.r,nc=pos.c;
+   if(dir==='up')nr--; if(dir==='down')nr++; if(dir==='left')nc--; if(dir==='right')nc++;
+   let reward=-1, msg='移动成功，环境返回新状态。';
+   if(nr<0||nr>=rows||nc<0||nc>=cols||walls.has(nr+','+nc)){reward=-2;msg='撞到墙壁或边界：位置不变，得到 −2。';}
+   else {pos={r:nr,c:nc};}
+   if(pos.r===goal.r&&pos.c===goal.c){reward+=10;done=true;msg='到达终点！本步包含移动奖励 −1 和终点奖励 +10。';}
+   discountedReturn+=discount*reward; discount*=0.9; steps++;
+   lastAction=labels[dir]; lastReward=reward;
+   document.getElementById('mdpMessage').textContent=msg+' 已走 '+steps+' 步。';
+   draw();
+ }
+ document.querySelectorAll('[data-move]').forEach(b=>b.addEventListener('click',()=>move(b.dataset.move)));
+ function reset(){pos={...start};done=false;steps=0;discountedReturn=0;discount=1;lastAction='尚未移动';lastReward=null;document.getElementById('mdpMessage').textContent='从起点出发，尝试到达绿色终点。';draw();}
+ document.getElementById('resetMaze').addEventListener('click',reset);
+ document.getElementById('autoMaze').addEventListener('click',()=>{reset();['right','right','right','down','down','down'].forEach((d,i)=>setTimeout(()=>move(d),180*i));});
+ draw();
+})();
+</script>
+
+</body></html>
