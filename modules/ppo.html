@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PPO 深入讲解</title>
+<style>
+:root{color-scheme:light dark;--blue:#173f5f;--teal:#dceeea;--ink:#182533}
+*{box-sizing:border-box}body{margin:0;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182533}
+header{background:#173f5f;color:#fff;padding:28px max(22px,calc((100vw - 900px)/2))}
+main{max-width:900px;margin:28px auto;padding:0 20px 50px}
+article{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:22px;margin:16px 0}
+h1{line-height:1.25;margin:8px 0}h2{margin-top:28px}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.formula,pre{background:#eef4f8;padding:14px;border-radius:10px;overflow:auto;white-space:pre-wrap}
+.callout{background:#edf8f5;border-left:4px solid #3d9b8b;padding:12px 16px;border-radius:8px}
+a{color:#176b83} .back{display:inline-block;margin-top:12px;color:#fff}
+@media(prefers-color-scheme:dark){body{background:#111923;color:#e7edf4}article{background:#192432;border-color:#2c3a4a}.formula,pre{background:#101b28}.callout{background:#172e30}}
+</style>
+</head>
+<body><header><div>机器人强化学习 · 学习专题</div><h1>PPO 深入讲解</h1><p>从概率比率、裁剪目标到训练诊断，建立可用于读代码的 PPO 心智模型。</p><a class="back" href="../index.html">← 返回学习门户</a></header><main>
+<article><h2>1. PPO 在解决什么问题？</h2><p>策略梯度通过采样轨迹估计提高期望回报的方向。若一次更新让新策略与采样数据对应的旧策略差异过大，训练可能不稳定。PPO 使用裁剪目标，抑制概率比率偏离 1 时的过度优化。</p><div class="formula">rₜ(θ) = πθ(aₜ|sₜ) / πθold(aₜ|sₜ)<br>Lclip = E[min(rₜAₜ, clip(rₜ, 1−ε, 1+ε)Aₜ)]</div></article>
+<article><h2>2. Actor、Critic 与优势函数</h2><ul><li><b>Actor / Policy：</b>定义给定状态下的动作分布。</li><li><b>Critic：</b>估计 V(s)，为优势估计提供基线。</li><li><b>Advantage：</b>衡量某动作相对当前状态平均水平的好坏。</li><li><b>Entropy：</b>常用于鼓励探索。</li><li><b>Value loss：</b>让价值估计接近回报目标。</li></ul></article>
+<article><h2>3. 训练日志怎么看</h2><ul><li><b>平均回报/成功率：</b>任务表现是否提升。</li><li><b>Entropy：</b>策略分布是否过早变得确定。</li><li><b>Approx KL：</b>新旧策略差异，异常升高时检查学习率与更新轮数。</li><li><b>Value loss：</b>需结合回报尺度和价值预测误差判断。</li><li><b>Clip fraction：</b>有多少样本的比率触及裁剪区域。</li></ul><p class="callout">机器人任务中，务必先确认 action 表示关节位置目标、位置增量、速度还是力矩；这会改变动作尺度和控制难度。</p></article>
+<article><h2>4. 读代码清单</h2><ol><li>找到 rollout buffer 和采样逻辑。</li><li>确认 log probability 的计算位置。</li><li>检查 advantage 是否归一化。</li><li>核对 done、timeout 与 bootstrap 处理。</li><li>确认 policy loss、value loss、entropy loss 的权重。</li></ol></article></main></body></html>

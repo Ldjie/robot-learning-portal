@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MDP 与强化学习基础</title>
+<style>
+:root{color-scheme:light dark;--blue:#173f5f;--teal:#dceeea;--ink:#182533}
+*{box-sizing:border-box}body{margin:0;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182533}
+header{background:#173f5f;color:#fff;padding:28px max(22px,calc((100vw - 900px)/2))}
+main{max-width:900px;margin:28px auto;padding:0 20px 50px}
+article{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:22px;margin:16px 0}
+h1{line-height:1.25;margin:8px 0}h2{margin-top:28px}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.formula,pre{background:#eef4f8;padding:14px;border-radius:10px;overflow:auto;white-space:pre-wrap}
+.callout{background:#edf8f5;border-left:4px solid #3d9b8b;padding:12px 16px;border-radius:8px}
+a{color:#176b83} .back{display:inline-block;margin-top:12px;color:#fff}
+@media(prefers-color-scheme:dark){body{background:#111923;color:#e7edf4}article{background:#192432;border-color:#2c3a4a}.formula,pre{background:#101b28}.callout{background:#172e30}}
+</style>
+</head>
+<body><header><div>机器人强化学习 · 学习专题</div><h1>MDP 与强化学习基础</h1><p>用状态、动作、转移、奖励和折扣回报描述序贯决策问题。</p><a class="back" href="../index.html">← 返回学习门户</a></header><main>
+<article><h2>1. MDP 五元组</h2><div class="formula">M = (S, A, P, R, γ)</div><ul><li>S：状态空间；机器人中常是可观测状态或观测向量。</li><li>A：动作空间；例如关节目标或力矩。</li><li>P(s'|s,a)：状态转移规律。</li><li>R(s,a,s')：奖励函数。</li><li>γ：折扣因子，决定未来奖励的相对权重。</li></ul></article>
+<article><h2>2. 回报与价值</h2><div class="formula">Gₜ = rₜ + γrₜ₊₁ + γ²rₜ₊₂ + …<br>Vπ(s) = Eπ[Gₜ | sₜ=s]<br>Qπ(s,a) = Eπ[Gₜ | sₜ=s,aₜ=a]</div></article>
+<article><h2>3. 机器人任务设计</h2><p>状态和观测不一定相同：仿真器内部可用状态可能包含真实速度、接触信息等，而策略实际只能接收设计好的观测。奖励应与任务目标一致，同时注意奖励尺度、终止条件与潜在投机行为。</p></article></main></body></html>

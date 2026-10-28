@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>G1 AME 实验记录</title>
+<style>
+:root{color-scheme:light dark;--blue:#173f5f;--teal:#dceeea;--ink:#182533}
+*{box-sizing:border-box}body{margin:0;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182533}
+header{background:#173f5f;color:#fff;padding:28px max(22px,calc((100vw - 900px)/2))}
+main{max-width:900px;margin:28px auto;padding:0 20px 50px}
+article{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:22px;margin:16px 0}
+h1{line-height:1.25;margin:8px 0}h2{margin-top:28px}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.formula,pre{background:#eef4f8;padding:14px;border-radius:10px;overflow:auto;white-space:pre-wrap}
+.callout{background:#edf8f5;border-left:4px solid #3d9b8b;padding:12px 16px;border-radius:8px}
+a{color:#176b83} .back{display:inline-block;margin-top:12px;color:#fff}
+@media(prefers-color-scheme:dark){body{background:#111923;color:#e7edf4}article{background:#192432;border-color:#2c3a4a}.formula,pre{background:#101b28}.callout{background:#172e30}}
+</style>
+</head>
+<body><header><div>机器人强化学习 · 学习专题</div><h1>G1 AME 实验记录</h1><p>以可复现、可比较的实验验证网络改动是否有效。</p><a class="back" href="../index.html">← 返回学习门户</a></header><main>
+<article><h2>1. 实验模板</h2><div class="formula">问题：<br>假设：<br>基线 commit / 配置：<br>唯一改动：<br>训练步数 / wall-clock：<br>随机种子：<br>评估场景：<br>成功率 / 回报 / 跌倒率：<br>推理延迟 / 显存：<br>结论与下一步：</div></article>
+<article><h2>2. 注意力消融建议</h2><ul><li>Baseline：原始 MLP。</li><li>Variant A：仅替换时序编码器。</li><li>Variant B：仅对身体部位 token 使用 attention。</li><li>Variant C：改变 head 数或层数，控制参数量。</li><li>每组使用多个种子并报告均值、方差或置信区间。</li></ul></article>
+<article><h2>3. 结果解释</h2><p>不要只看单次最高回报。还应观察学习曲线、收敛速度、不同地形泛化、扰动恢复、动作平滑性和推理开销。记录失败实验同样重要。</p></article></main></body></html>

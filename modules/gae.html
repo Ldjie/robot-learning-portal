@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GAE 优势估计</title>
+<style>
+:root{color-scheme:light dark;--blue:#173f5f;--teal:#dceeea;--ink:#182533}
+*{box-sizing:border-box}body{margin:0;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182533}
+header{background:#173f5f;color:#fff;padding:28px max(22px,calc((100vw - 900px)/2))}
+main{max-width:900px;margin:28px auto;padding:0 20px 50px}
+article{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:22px;margin:16px 0}
+h1{line-height:1.25;margin:8px 0}h2{margin-top:28px}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.formula,pre{background:#eef4f8;padding:14px;border-radius:10px;overflow:auto;white-space:pre-wrap}
+.callout{background:#edf8f5;border-left:4px solid #3d9b8b;padding:12px 16px;border-radius:8px}
+a{color:#176b83} .back{display:inline-block;margin-top:12px;color:#fff}
+@media(prefers-color-scheme:dark){body{background:#111923;color:#e7edf4}article{background:#192432;border-color:#2c3a4a}.formula,pre{background:#101b28}.callout{background:#172e30}}
+</style>
+</head>
+<body><header><div>机器人强化学习 · 学习专题</div><h1>GAE 优势估计</h1><p>理解 TD 残差与 λ 参数如何控制优势估计的偏差和方差。</p><a class="back" href="../index.html">← 返回学习门户</a></header><main>
+<article><h2>1. TD 残差</h2><div class="formula">δₜ = rₜ + γV(sₜ₊₁) − V(sₜ)</div><p>TD 残差衡量一步奖励加下一状态价值，与当前价值预测之间的差异。</p></article>
+<article><h2>2. GAE 公式</h2><div class="formula">Âₜ = δₜ + (γλ)δₜ₊₁ + (γλ)²δₜ₊₂ + …</div><p>γ 控制未来奖励折扣；λ 控制残差向后累积的长度。较小 λ 通常更偏向短视、方差较低；较大 λ 使用更多未来信息，但方差可能更高。</p></article>
+<article><h2>3. 实现检查</h2><ul><li>区分真正终止（terminal）与时间上限截断（timeout）。</li><li>确认最后一个状态的 bootstrap value 是否正确。</li><li>检查 done mask 是否阻断跨 episode 的递推。</li><li>确认 advantage normalization 是否开启。</li></ul></article></main></body></html>

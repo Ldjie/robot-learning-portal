@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>G1 AME 网络结构</title>
+<style>
+:root{color-scheme:light dark;--blue:#173f5f;--teal:#dceeea;--ink:#182533}
+*{box-sizing:border-box}body{margin:0;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182533}
+header{background:#173f5f;color:#fff;padding:28px max(22px,calc((100vw - 900px)/2))}
+main{max-width:900px;margin:28px auto;padding:0 20px 50px}
+article{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:22px;margin:16px 0}
+h1{line-height:1.25;margin:8px 0}h2{margin-top:28px}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.formula,pre{background:#eef4f8;padding:14px;border-radius:10px;overflow:auto;white-space:pre-wrap}
+.callout{background:#edf8f5;border-left:4px solid #3d9b8b;padding:12px 16px;border-radius:8px}
+a{color:#176b83} .back{display:inline-block;margin-top:12px;color:#fff}
+@media(prefers-color-scheme:dark){body{background:#111923;color:#e7edf4}article{background:#192432;border-color:#2c3a4a}.formula,pre{background:#101b28}.callout{background:#172e30}}
+</style>
+</head>
+<body><header><div>机器人强化学习 · 学习专题</div><h1>G1 AME 网络结构</h1><p>记录 Policy 网络、张量形状与 Attention 插入位置。</p><a class="back" href="../index.html">← 返回学习门户</a></header><main>
+<article><h2>1. 网络结构记录表</h2><ul><li>输入字段：关节位置/速度、基座姿态、角速度、指令、历史帧等。</li><li>编码方式：直接拼接、分组 MLP、时序 encoder 或 token 化。</li><li>特征维度：输入维度、hidden size、head 数、层数。</li><li>输出头：动作均值、标准差、价值估计。</li></ul></article>
+<article><h2>2. 追踪张量流</h2><div class="formula">obs → normalize / split → encoder → attention → policy trunk → action distribution</div><p>在每个节点记录 shape、dtype、device、是否包含时间维、是否共享 Actor/Critic 参数。</p></article>
+<article><h2>3. 排查常见问题</h2><ul><li>batch_first 设置与输入 shape 不一致。</li><li>mask 的 True/False 语义与框架 API 不一致。</li><li>历史序列顺序或时间对齐错误。</li><li>新增模块后参数初始化、学习率和梯度尺度变化。</li><li>推理路径与训练路径的归一化不一致。</li></ul></article></main></body></html>

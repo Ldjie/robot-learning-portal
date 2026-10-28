@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>G1 AME 项目总览</title>
+<style>
+:root{color-scheme:light dark;--blue:#173f5f;--teal:#dceeea;--ink:#182533}
+*{box-sizing:border-box}body{margin:0;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182533}
+header{background:#173f5f;color:#fff;padding:28px max(22px,calc((100vw - 900px)/2))}
+main{max-width:900px;margin:28px auto;padding:0 20px 50px}
+article{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:22px;margin:16px 0}
+h1{line-height:1.25;margin:8px 0}h2{margin-top:28px}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.formula,pre{background:#eef4f8;padding:14px;border-radius:10px;overflow:auto;white-space:pre-wrap}
+.callout{background:#edf8f5;border-left:4px solid #3d9b8b;padding:12px 16px;border-radius:8px}
+a{color:#176b83} .back{display:inline-block;margin-top:12px;color:#fff}
+@media(prefers-color-scheme:dark){body{background:#111923;color:#e7edf4}article{background:#192432;border-color:#2c3a4a}.formula,pre{background:#101b28}.callout{background:#172e30}}
+</style>
+</head>
+<body><header><div>机器人强化学习 · 学习专题</div><h1>G1 AME 项目总览</h1><p>项目知识入口：先建立仓库地图，再核实算法与网络实现。</p><a class="back" href="../index.html">← 返回学习门户</a></header><main>
+<article><h2>1. 项目地图模板</h2><ul><li>训练入口：命令行、配置文件与 runner。</li><li>环境定义：机器人模型、观测、动作、奖励、reset。</li><li>算法实现：PPO / rollout storage / optimizer。</li><li>策略网络：Actor、Critic、encoder、attention 模块。</li><li>部署/评估：checkpoint、推理接口、控制频率。</li></ul></article>
+<article><h2>2. 建议的阅读顺序</h2><ol><li>从 README 和运行脚本确认训练流程。</li><li>从配置文件确定 observation/action 维度。</li><li>追踪环境如何组装 observation 和 reward。</li><li>追踪 policy forward 到 action 输出。</li><li>最后研究 attention 的插入位置和训练目标。</li></ol><p class="callout">“AME”的具体定义和实现应以你实际项目仓库、论文或文档为准，不要只凭缩写推断。</p></article></main></body></html>

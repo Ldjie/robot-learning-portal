@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Transformer 基础</title>
+<style>
+:root{color-scheme:light dark;--blue:#173f5f;--teal:#dceeea;--ink:#182533}
+*{box-sizing:border-box}body{margin:0;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182533}
+header{background:#173f5f;color:#fff;padding:28px max(22px,calc((100vw - 900px)/2))}
+main{max-width:900px;margin:28px auto;padding:0 20px 50px}
+article{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:22px;margin:16px 0}
+h1{line-height:1.25;margin:8px 0}h2{margin-top:28px}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.formula,pre{background:#eef4f8;padding:14px;border-radius:10px;overflow:auto;white-space:pre-wrap}
+.callout{background:#edf8f5;border-left:4px solid #3d9b8b;padding:12px 16px;border-radius:8px}
+a{color:#176b83} .back{display:inline-block;margin-top:12px;color:#fff}
+@media(prefers-color-scheme:dark){body{background:#111923;color:#e7edf4}article{background:#192432;border-color:#2c3a4a}.formula,pre{background:#101b28}.callout{background:#172e30}}
+</style>
+</head>
+<body><header><div>机器人强化学习 · 学习专题</div><h1>Transformer 基础</h1><p>从 token、位置编码、残差连接与前馈网络理解 Transformer。</p><a class="back" href="../index.html">← 返回学习门户</a></header><main>
+<article><h2>1. 一个 Encoder block</h2><div class="formula">输入 → Multi-Head Self-Attention → 残差 + LayerNorm<br>→ Feed-Forward Network → 残差 + LayerNorm</div><p>注意力在 token 之间混合信息，前馈网络逐 token 变换特征；残差和归一化有助于优化深层网络。</p></article>
+<article><h2>2. 为什么需要位置/时间信息？</h2><p>自注意力本身对 token 排列不敏感。序列任务通常需要位置编码、时间戳、相对位置偏置，或通过结构设计注入顺序信息。</p></article>
+<article><h2>3. 机器人序列建模</h2><ul><li>输入可以是连续多帧 proprioception（本体感觉）。</li><li>每帧可拼接关节位置/速度、基座姿态、角速度与指令。</li><li>动作输出可以对应当前帧，也可以对应预测未来动作；训练目标要与时间对齐。</li><li>检查序列长度、padding mask、因果 mask 和训练/推理一致性。</li></ul></article></main></body></html>

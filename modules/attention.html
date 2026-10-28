@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>注意力机制</title>
+<style>
+:root{color-scheme:light dark;--blue:#173f5f;--teal:#dceeea;--ink:#182533}
+*{box-sizing:border-box}body{margin:0;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182533}
+header{background:#173f5f;color:#fff;padding:28px max(22px,calc((100vw - 900px)/2))}
+main{max-width:900px;margin:28px auto;padding:0 20px 50px}
+article{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:22px;margin:16px 0}
+h1{line-height:1.25;margin:8px 0}h2{margin-top:28px}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.formula,pre{background:#eef4f8;padding:14px;border-radius:10px;overflow:auto;white-space:pre-wrap}
+.callout{background:#edf8f5;border-left:4px solid #3d9b8b;padding:12px 16px;border-radius:8px}
+a{color:#176b83} .back{display:inline-block;margin-top:12px;color:#fff}
+@media(prefers-color-scheme:dark){body{background:#111923;color:#e7edf4}article{background:#192432;border-color:#2c3a4a}.formula,pre{background:#101b28}.callout{background:#172e30}}
+</style>
+</head>
+<body><header><div>机器人强化学习 · 学习专题</div><h1>注意力机制</h1><p>理解 Q/K/V、缩放点积注意力、多头机制，以及它在机器人策略中的潜在作用。</p><a class="back" href="../index.html">← 返回学习门户</a></header><main>
+<article><h2>1. 核心公式</h2><div class="formula">Attention(Q,K,V) = softmax(QKᵀ / √dₖ)V</div><ul><li><b>Query：</b>当前 token 想检索什么。</li><li><b>Key：</b>每个 token 用于匹配的特征。</li><li><b>Value：</b>匹配后被加权汇总的信息。</li><li><b>√dₖ：</b>控制点积随维度增长的尺度，避免 softmax 过于尖锐。</li></ul></article>
+<article><h2>2. 张量形状</h2><div class="formula">输入（batch_first=True）：[B, T, D]<br>Q: [B, Tq, Dk]  K: [B, Tk, Dk]  V: [B, Tk, Dv]<br>注意力权重： [B, heads, Tq, Tk]<br>输出： [B, Tq, D]</div><p>实现时重点检查 batch 维、序列维、embedding 维，以及 mask 的广播规则。</p></article>
+<article><h2>3. G1 / 强化学习场景</h2><ul><li>将历史观测编码为时间序列，建模延迟与动态信息。</li><li>将身体部位或关节组编码为 token，建模跨部位关联。</li><li>将指令、地形或参考动作作为条件，探索交叉注意力。</li></ul><p class="callout">注意力不是天然更好。与 MLP 基线比较时应固定训练预算、数据量、随机种子和评估场景，并记录推理耗时。</p></article></main></body></html>
