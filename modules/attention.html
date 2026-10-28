@@ -1,19 +1,116 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>注意力机制</title>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>注意力机制：从数学原理到机器人实践</title>
 <style>
-:root{color-scheme:light dark;--blue:#173f5f;--teal:#dceeea;--ink:#182533}
-*{box-sizing:border-box}body{margin:0;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182533}
-header{background:#173f5f;color:#fff;padding:28px max(22px,calc((100vw - 900px)/2))}
-main{max-width:900px;margin:28px auto;padding:0 20px 50px}
-article{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:22px;margin:16px 0}
-h1{line-height:1.25;margin:8px 0}h2{margin-top:28px}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
-.formula,pre{background:#eef4f8;padding:14px;border-radius:10px;overflow:auto;white-space:pre-wrap}
-.callout{background:#edf8f5;border-left:4px solid #3d9b8b;padding:12px 16px;border-radius:8px}
-a{color:#176b83} .back{display:inline-block;margin-top:12px;color:#fff}
-@media(prefers-color-scheme:dark){body{background:#111923;color:#e7edf4}article{background:#192432;border-color:#2c3a4a}.formula,pre{background:#101b28}.callout{background:#172e30}}
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#5d687d;--line:#dfe5ef;--accent:#3659d9;--soft:#edf1ff;--code:#111827;--good:#e8f7ef}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 system-ui,-apple-system,"Segoe UI",Arial,"Noto Sans SC",sans-serif}
+header{background:linear-gradient(135deg,#172554,#3659d9);color:white;padding:42px 22px 34px}header .wrap,main{max-width:1120px;margin:auto}header h1{font-size:clamp(28px,4vw,42px);line-height:1.2;margin:0 0 12px}header p{max-width:850px;color:#e1e8ff;margin:0}.tag{display:inline-block;border:1px solid #ffffff55;border-radius:999px;padding:3px 10px;font-size:13px;margin-bottom:14px}
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:24px;max-width:1120px;margin:24px auto;padding:0 16px}
+nav{position:sticky;top:16px;align-self:start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;max-height:calc(100vh - 32px);overflow:auto}nav strong{display:block;margin-bottom:8px}nav a{display:block;color:var(--muted);text-decoration:none;padding:5px 8px;border-radius:7px;font-size:14px}nav a:hover{background:var(--soft);color:var(--accent)}
+main{min-width:0;margin:0}.lesson{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;margin-bottom:18px;scroll-margin-top:20px}.lesson h2{font-size:25px;margin:0 0 14px;line-height:1.35}.lesson h3{font-size:19px;margin:24px 0 8px}.muted{color:var(--muted)}.callout{background:var(--soft);border-left:4px solid var(--accent);padding:13px 16px;border-radius:8px;margin:16px 0}.success{background:var(--good);border-left-color:#20945a}.formula{background:#f0f3f9;border:1px solid var(--line);padding:14px 16px;border-radius:10px;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;line-height:1.9;white-space:normal}.code{background:var(--code);color:#e5e7eb;padding:16px;border-radius:10px;overflow:auto;font:13px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.mini{border:1px solid var(--line);border-radius:10px;padding:14px}.mini h3{margin:0 0 6px}.tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}th{background:#f0f3f9}.check{display:flex;gap:9px;align-items:flex-start;padding:7px 0}.check input{margin-top:7px;accent-color:var(--accent)}.progressbar{height:8px;background:#e4e8f0;border-radius:99px;overflow:hidden;margin:10px 0}.progressbar span{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}.quiz button{border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px 12px;cursor:pointer;margin:5px 5px 5px 0}.quiz button:hover{border-color:var(--accent)}.answer{display:none;background:var(--good);padding:12px;border-radius:8px;margin-top:8px}.footer{text-align:center;color:var(--muted);padding:28px 16px;font-size:13px}
+@media(max-width:800px){.layout{grid-template-columns:1fr}nav{position:relative;top:0;max-height:none}.grid{grid-template-columns:1fr}.lesson{padding:20px}.layout{padding:0 12px}}
 </style>
 </head>
-<body><header><div>机器人强化学习 · 学习专题</div><h1>注意力机制</h1><p>理解 Q/K/V、缩放点积注意力、多头机制，以及它在机器人策略中的潜在作用。</p><a class="back" href="../index.html">← 返回学习门户</a></header><main>
-<article><h2>1. 核心公式</h2><div class="formula">Attention(Q,K,V) = softmax(QKᵀ / √dₖ)V</div><ul><li><b>Query：</b>当前 token 想检索什么。</li><li><b>Key：</b>每个 token 用于匹配的特征。</li><li><b>Value：</b>匹配后被加权汇总的信息。</li><li><b>√dₖ：</b>控制点积随维度增长的尺度，避免 softmax 过于尖锐。</li></ul></article>
-<article><h2>2. 张量形状</h2><div class="formula">输入（batch_first=True）：[B, T, D]<br>Q: [B, Tq, Dk]  K: [B, Tk, Dk]  V: [B, Tk, Dv]<br>注意力权重： [B, heads, Tq, Tk]<br>输出： [B, Tq, D]</div><p>实现时重点检查 batch 维、序列维、embedding 维，以及 mask 的广播规则。</p></article>
-<article><h2>3. G1 / 强化学习场景</h2><ul><li>将历史观测编码为时间序列，建模延迟与动态信息。</li><li>将身体部位或关节组编码为 token，建模跨部位关联。</li><li>将指令、地形或参考动作作为条件，探索交叉注意力。</li></ul><p class="callout">注意力不是天然更好。与 MLP 基线比较时应固定训练预算、数据量、随机种子和评估场景，并记录推理耗时。</p></article></main></body></html>
+<body>
+<header><div class="wrap"><span class="tag">机器人强化学习学习门户 · 专题课程</span><h1>注意力机制：从数学原理到机器人实践</h1><p>从直觉出发，逐步学习 Query / Key / Value、缩放点积注意力、多头注意力、Transformer、PyTorch 实现，以及如何评估注意力模块在机器人策略中的实际价值。</p></div></header>
+<div class="layout">
+<nav><strong>课程目录</strong>
+<a href="#roadmap">学习路线</a><a href="#why">01 为什么需要注意力</a><a href="#qkv">02 Query / Key / Value</a><a href="#math">03 数学计算全过程</a><a href="#scale">04 缩放因子</a><a href="#mask">05 Mask</a><a href="#multihead">06 多头注意力</a><a href="#types">07 Self / Cross Attention</a><a href="#transformer">08 Transformer Block</a><a href="#position">09 位置与时间信息</a><a href="#pytorch">10 PyTorch 入门</a><a href="#maskcode">11 Mask 代码</a><a href="#complexity">12 复杂度与部署</a><a href="#robot">13 机器人/G1 AME 应用</a><a href="#experiment">14 实验设计</a><a href="#pitfalls">15 常见错误</a><a href="#quiz">16 自测题</a><a href="#checklist">学习清单</a>
+</nav>
+<main>
+<section class="lesson" id="roadmap"><h2>学习路线与先修知识</h2><p>建议按顺序学习，不需要一开始就掌握所有 Transformer 变体。你只需要具备矩阵乘法、向量、概率分布和基本 PyTorch 张量操作的概念。</p><div class="grid"><div class="mini"><h3>阶段 A：建立直觉</h3><p>理解为什么需要动态聚合、Q/K/V 的角色、Softmax 权重。</p></div><div class="mini"><h3>阶段 B：理解架构</h3><p>学习 Mask、多头注意力、残差、归一化与位置编码。</p></div><div class="mini"><h3>阶段 C：动手实现</h3><p>运行 PyTorch 代码，检查形状、Mask 和数值行为。</p></div><div class="mini"><h3>阶段 D：机器人实验</h3><p>提出假设，建立公平基线，比较任务效果与推理成本。</p></div></div><div class="callout">关键原则：注意力是一种信息交互/聚合机制，不是自动提高性能的开关。是否有帮助，取决于数据结构、任务需求、训练设置与部署预算。</div></section>
+
+<section class="lesson" id="why"><h2>01 · 为什么需要注意力？</h2><p>假设机器人策略接收最近 20 帧观测，每帧包括关节位置、关节速度、基座姿态和目标指令。把全部观测拼接后输入 MLP 当然可行，但 MLP 并没有显式的“从一个时刻读取另一个时刻信息”的结构先验；它需要通过参数学习这种关系。</p><p>注意力允许每个位置根据当前输入，动态地决定从哪些其他位置聚合信息。不同输入会产生不同的注意力权重，因此它是一种内容相关的信息路由方式。</p><div class="callout"><b>直觉示例：</b>脚端刚刚接触障碍物时，当前决策可能需要更多参考最近几帧的足端运动；在稳定周期运动时，较长时间范围的节律信息可能有用。注意力提供学习这些关系的能力，但并不保证模型一定学出这种行为。</div><h3>注意力与普通加权平均的差异</h3><p>固定加权平均使用预先设定或固定学习的权重；自注意力的权重会由输入内容计算得到。它可以针对不同样本、不同 Query 位置生成不同的聚合权重。</p></section>
+
+<section class="lesson" id="qkv"><h2>02 · Query、Key、Value 分别是什么？</h2><p>可以把输入序列中的每个位置想象成一张信息卡片：</p><div class="grid"><div class="mini"><h3>Query（查询，Q）</h3><p>当前这个位置正在寻找什么信息。它决定用什么特征去匹配其他位置。</p></div><div class="mini"><h3>Key（键，K）</h3><p>每个位置提供用于匹配的特征。Query 与 Key 的相似程度决定分数。</p></div><div class="mini"><h3>Value（值，V）</h3><p>匹配后真正被取出并聚合的信息内容。</p></div><div class="mini"><h3>可学习投影</h3><p>Q、K、V 通常由同一输入 X 乘以不同的可学习矩阵得到，而不是人工指定语义。</p></div></div><div class="formula">X ∈ ℝⁿˣᵈ<br>Q = XW<sub>Q</sub>，K = XW<sub>K</sub>，V = XW<sub>V</sub><br>n：序列长度；d：输入特征维度<br>W<sub>Q</sub>、W<sub>K</sub>、W<sub>V</sub>：训练得到的参数矩阵</div><p>为什么要用三组不同的投影？因为“用于比较的特征”和“要传递的内容”不必相同。模型可以学习用一套表示判断相关性，再用另一套表示传递信息。</p><div class="callout">注意：Q/K/V 的比喻只是帮助理解，不表示 Query 必须是自然语言问题，Key 必须是标签，Value 必须是原始输入。在神经网络中，它们是可学习的向量表示。</div></section>
+
+<section class="lesson" id="math"><h2>03 · 数学计算全过程</h2><p>缩放点积注意力的标准形式是：</p><div class="formula">Attention(Q,K,V) = softmax(QKᵀ / √d<sub>k</sub>) V</div><h3>步骤 1：计算匹配分数</h3><div class="formula">S = QKᵀ / √d<sub>k</sub></div><p>若 Q 有 n 个 Query，K 有 n 个 Key，QKᵀ 就是 n×n 矩阵。S 的第 i 行第 j 列表示第 i 个 Query 与第 j 个 Key 的匹配分数。</p><h3>步骤 2：对每行做 Softmax</h3><div class="formula">A<sub>ij</sub> = exp(S<sub>ij</sub>) / Σ<sub>j</sub> exp(S<sub>ij</sub>)</div><p>Softmax 通常沿 Key/来源位置这个维度计算。每一行的权重非负，且在没有特殊 Mask 数值问题时，行和为 1。</p><h3>步骤 3：加权聚合 Value</h3><div class="formula">O = AV<br>o<sub>i</sub> = Σ<sub>j</sub> A<sub>ij</sub> v<sub>j</sub></div><p>每个输出向量是多个 Value 的加权和。权重越大，对输出的直接线性贡献通常越大，但不能仅凭权重就断言因果重要性。</p><h3>手算小例子</h3><p>假设一个 Query 对三个 Key 的分数为 [2, 1, 0]。Softmax 权重大约为 [0.665, 0.245, 0.090]，因此：</p><div class="formula">o = 0.665 v₁ + 0.245 v₂ + 0.090 v₃</div><p>第一个 Value 的权重最大，但其他两个仍然参与输出。若 Value 是多维向量，上式会对每个维度分别执行相同的加权求和。</p><div class="callout success"><b>自检：</b>QKᵀ 产生的是“位置对位置”的分数矩阵；Softmax 把分数变成权重；乘 V 才把信息聚合成输出。注意力权重本身不是最终输出。</div></section>
+
+<section class="lesson" id="scale"><h2>04 · 为什么要除以 √d<sub>k</sub>？</h2><p>点积是多个维度乘积后求和。如果 Q、K 的各维分量尺度相近且近似独立，点积的方差通常会随维度 d<sub>k</sub> 增长。维度越大，分数可能越大，Softmax 就容易变得非常尖锐。</p><p>当某个权重接近 1、其余接近 0 时，Softmax 在饱和区的梯度可能很小，训练可能更难优化。除以 √d<sub>k</sub> 是一种控制分数尺度的方式。</p><div class="formula">未缩放分数：QKᵀ<br>缩放分数：QKᵀ / √d<sub>k</sub></div><p>缩放通常不会改变同一行分数的排序，但会改变 Softmax 的分布尖锐程度。它不是为了让权重必然均匀，也不能保证训练绝对稳定。</p></section>
+
+<section class="lesson" id="mask"><h2>05 · Mask：哪些位置可以被读取？</h2><div class="grid"><div class="mini"><h3>Padding Mask</h3><p>不同样本序列长度不同时，批处理需要补齐。Mask 用于避免把补齐位置当成真实 Key/Value。</p></div><div class="mini"><h3>Causal Mask</h3><p>自回归预测时，位置 t 不能读取未来的 t+1、t+2 等位置。</p></div><div class="mini"><h3>结构约束 Mask</h3><p>某些模型会限制特定 token 之间的交互；需要有明确的建模理由。</p></div><div class="mini"><h3>机器人历史窗口</h3><p>若所有输入都来自决策时刻之前，编码整个已知历史窗口通常不一定需要因果 Mask。</p></div></div><p>Mask 通常在 Softmax 前将不允许的位置分数设为很大的负数，使对应权重接近 0。实际 API 中，布尔 Mask 的 True/False 含义可能因参数类型不同而不同，必须查对应框架文档。</p><div class="callout">最重要的不是机械地加 Mask，而是明确数据的时间语义。把未来状态误放进输入会造成信息泄露；单纯使用某一种 Mask 并不能自动修复错误的数据构造。</div></section>
+
+<section class="lesson" id="multihead"><h2>06 · 多头注意力（Multi-Head Attention）</h2><p>单头注意力只在一组投影空间中计算交互。多头注意力使用多套独立投影，让不同头在不同表示子空间中学习关系。</p><div class="formula">headᵢ = Attention(QWᵢ<sup>Q</sup>, KWᵢ<sup>K</sup>, VWᵢ<sup>V</sup>)<br>MultiHead(Q,K,V) = Concat(head₁,…,headₕ) W<sub>O</sub></div><p>各头输出通常先拼接，再通过输出投影 W<sub>O</sub> 映射到模型维度。某些头可能学习短期动态，某些头可能学习跨身体部位关系，但这是训练中可能形成的现象，不是架构保证。</p><h3>维度示例</h3><div class="tablewrap"><table><thead><tr><th>配置</th><th>模型维度</th><th>头数</th><th>每头维度（常见设置）</th></tr></thead><tbody><tr><td>A</td><td>128</td><td>4</td><td>32</td></tr><tr><td>B</td><td>128</td><td>8</td><td>16</td></tr><tr><td>C</td><td>256</td><td>8</td><td>32</td></tr></tbody></table></div><p>常见设计满足 h × d<sub>head</sub> = d<sub>model</sub>。增加头数不一定提升效果；在固定模型维度下，头数增加会使每头维度减小，也会带来实现和计算上的权衡。</p></section>
+
+<section class="lesson" id="types"><h2>07 · Self-Attention、Cross-Attention 与 MLP</h2><div class="grid"><div class="mini"><h3>Self-Attention</h3><p>Q、K、V 来自同一组输入。适合让历史帧或身体部位 Token 彼此交换信息。</p></div><div class="mini"><h3>Cross-Attention</h3><p>Q 来自一组输入，K/V 来自另一组输入。例如状态表示查询参考动作或地形特征。</p></div><div class="mini"><h3>MLP / FFN</h3><p>通常在每个 Token 的特征维上做非线性变换，不直接执行 Token 与 Token 之间的交互。</p></div><div class="mini"><h3>残差与归一化</h3><p>残差帮助信息和梯度跨层传播；LayerNorm 调整特征分布。具体顺序依架构而定。</p></div></div><p>Attention 和 MLP 不是互相替代的关系。Transformer 通常把 Token 间的信息交互与逐 Token 的非线性加工结合起来。</p></section>
+
+<section class="lesson" id="transformer"><h2>08 · Transformer Block 的组成</h2><div class="formula">输入 X<br>↓<br>多头注意力（Token 间交互）<br>↓<br>残差连接 + LayerNorm（顺序依架构）<br>↓<br>前馈网络 FFN：Linear → 激活函数 → Linear<br>↓<br>残差连接 + LayerNorm<br>↓<br>输出</div><p>完整 Transformer 还可能包含位置编码、Dropout、门控结构或不同的归一化顺序。Pre-LN 和 Post-LN 的排列不同，阅读实际代码时应以实现为准。</p><h3>为什么还需要 FFN？</h3><p>注意力把不同 Token 的信息混合起来，而 FFN 对每个位置的表示做更丰富的非线性变换。只做注意力并不等于完成所有特征提取工作。</p></section>
+
+<section class="lesson" id="position"><h2>09 · 位置编码与时间信息</h2><p>注意力运算本身并不会自动理解输入的先后顺序。如果没有位置信息，模型对 Token 排列的处理具有特定的置换性质，因此通常需要明确地提供位置或时间信息。</p><ul><li><b>绝对位置编码：</b>给每个位置加入位置向量。</li><li><b>相对位置方法：</b>让模型利用 Token 之间的相对距离或位置关系。</li><li><b>真实时间间隔：</b>不规则采样、丢帧或不同采样周期下，可显式编码时间差。</li></ul><p>机器人时序输入尤其要确认：帧顺序、采样频率、历史窗口长度、当前帧是否包含、观测是否延迟，以及训练和部署时窗口构造是否一致。</p></section>
+
+<section class="lesson" id="pytorch"><h2>10 · PyTorch：最小自注意力实现</h2><p>示例假设批量大小 32、序列长度 20、每个 Token 的特征维度 128，使用 4 个注意力头。</p><pre class="code">import torch
+import torch.nn as nn
+
+batch, seq_len, d_model = 32, 20, 128
+x = torch.randn(batch, seq_len, d_model)
+
+attn = nn.MultiheadAttention(
+    embed_dim=d_model,
+    num_heads=4,
+    batch_first=True,
+)
+
+# Self-Attention：Q、K、V 都来自 x
+y, weights = attn(x, x, x, need_weights=True)
+
+print(y.shape)       # [32, 20, 128]
+print(weights.shape) # 常见默认平均各头：[32, 20, 20]</pre><h3>如何读懂形状？</h3><div class="tablewrap"><table><thead><tr><th>张量</th><th>形状</th><th>含义</th></tr></thead><tbody><tr><td>x</td><td>[B, T, D]</td><td>B 个样本，每个 T 个 Token，每个 Token D 维</td></tr><tr><td>y</td><td>[B, T, D]</td><td>每个 Token 聚合上下文后的表示</td></tr><tr><td>weights</td><td>[B, T, T]</td><td>每个 Query 对各 Key 的权重（默认通常对头取平均）</td></tr></tbody></table></div><p>如果需要逐头权重，可以尝试 <code>average_attn_weights=False</code>，通常会得到 [B, heads, T, T]。API 细节可能随 PyTorch 版本变化，请以当前版本文档为准。</p><div class="callout">调试建议：每次先打印输入、输出、权重的形状；确认没有把 batch 维与 sequence 维搞反；再检查数值是否有限（没有 NaN 或 Inf）。</div></section>
+
+<section class="lesson" id="maskcode"><h2>11 · Padding Mask 示例</h2><pre class="code"># key_padding_mask: [batch, seq_len]
+# 对 nn.MultiheadAttention 而言，True 表示忽略该 Key 位置
+key_padding_mask = torch.zeros(
+    batch, seq_len, dtype=torch.bool
+)
+key_padding_mask[0, 16:] = True  # 第 0 条序列后 4 帧是 padding
+
+y, weights = attn(
+    x, x, x,
+    key_padding_mask=key_padding_mask,
+    need_weights=True,
+)
+
+# 注意：这通常屏蔽作为 Key/Value 的 padding 位置。
+# 如果无效 Query 位置的输出也不能使用，需要按任务额外处理。</pre><p>Mask 是最容易出现 API 语义误解的地方。不同参数（例如 <code>key_padding_mask</code> 与 <code>attn_mask</code>）的布尔值含义和形状要求要分别核对。</p><h3>实现检查</h3><div class="check"><input type="checkbox" data-check="mask1"><label>确认 Mask 形状与序列维度一致</label></div><div class="check"><input type="checkbox" data-check="mask2"><label>确认 True/False 的含义符合当前 API</label></div><div class="check"><input type="checkbox" data-check="mask3"><label>确认不存在整行全部被屏蔽而导致数值异常的情况</label></div></section>
+
+<section class="lesson" id="complexity"><h2>12 · 计算复杂度与实时部署</h2><p>标准全注意力会形成 T×T 的分数矩阵。注意力部分的计算与内存通常随序列长度呈平方级增长，粗略计算量常写作 O(T²D)；逐 Token 的 FFN 通常近似随 T 线性增长（忽略具体隐藏层维度常数）。</p><ul><li>短历史窗口下，标准注意力可能是简单有效的选择。</li><li>历史窗口很长时，应关注分数矩阵的内存和延迟。</li><li>可比较缩短窗口、减少模型维度或减少使用注意力的层数。</li><li>评估时使用与部署一致的设备、批量、精度和推理路径。</li><li>除了平均延迟，也要测量延迟分布、最坏情况和控制周期是否被满足。</li></ul><div class="callout">机器人控制系统中，离线回报更高不一定意味着更适合部署。如果推理延迟、抖动或内存占用超过预算，模型可能无法按目标控制频率稳定运行。</div></section>
+
+<section class="lesson" id="robot"><h2>13 · 机器人策略与 G1 AME：可探索的设计方向</h2><p>在决定是否使用注意力前，先弄清楚输入数据的结构和当前模型真正缺少什么能力。以下是可以形成实验假设的方向，并非对某个具体 G1 AME 代码库实现的断言。</p><div class="grid"><div class="mini"><h3>A. 历史帧 Token</h3><p>每帧观测经共享编码器映射为 D 维 Token，再通过时序注意力整合历史，输出供 Actor 使用。</p></div><div class="mini"><h3>B. 身体部位 Token</h3><p>将躯干、左右腿、左右臂等特征分组编码，探索跨部位的信息交互。需要明确特征和关节索引。</p></div><div class="mini"><h3>C. 状态与指令融合</h3><p>研究状态 Token 与目标速度、参考轨迹、地形特征之间的交互，必要时尝试 Cross-Attention。</p></div><div class="mini"><h3>D. Actor 前的时序编码器</h3><p>让注意力编码历史，再把表示传给策略网络；训练和部署必须使用一致的历史缓存机制。</p></div></div><h3>设计前必须确认</h3><ul><li>观测向量每一维代表什么，是否已经包含历史信息。</li><li>控制频率、观测延迟、历史帧数与部署推理预算。</li><li>策略是 feed-forward、循环网络，还是已有时序编码器。</li><li>训练和部署的观测归一化、缓存和序列边界是否一致。</li></ul><div class="callout">建议从一个最小改动开始：在可比的基线上增加一个小型历史注意力编码器，保持训练预算和评估条件尽可能一致，再决定是否继续扩大结构。</div></section>
+
+<section class="lesson" id="experiment"><h2>14 · 怎样验证注意力是否真的有帮助？</h2><p>强化学习结果会受随机种子、采样、环境随机化和训练波动影响。不要只比较一次运行的最好回报。</p><div class="check"><input type="checkbox" data-check="exp1"><label>明确假设：注意力要解决哪一种时间或结构依赖问题？</label></div><div class="check"><input type="checkbox" data-check="exp2"><label>建立 MLP 或现有策略基线，尽量控制参数量与训练预算</label></div><div class="check"><input type="checkbox" data-check="exp3"><label>固定环境、奖励、采样预算和评估协议</label></div><div class="check"><input type="checkbox" data-check="exp4"><label>用多个随机种子报告均值、方差或置信区间</label></div><div class="check"><input type="checkbox" data-check="exp5"><label>测量成功率、回报、稳定性、扰动恢复与推理延迟</label></div><div class="check"><input type="checkbox" data-check="exp6"><label>做消融：去掉注意力、改变窗口长度或头数</label></div><div class="check"><input type="checkbox" data-check="exp7"><label>检查是否存在未来信息泄露、训练/部署预处理不一致</label></div><h3>可记录的对比表</h3><div class="tablewrap"><table><thead><tr><th>指标</th><th>基线策略</th><th>注意力策略</th><th>备注</th></tr></thead><tbody><tr><td>成功率 / 任务回报</td><td>待测</td><td>待测</td><td>相同评估条件</td></tr><tr><td>跨随机种子波动</td><td>待测</td><td>待测</td><td>报告均值与离散程度</td></tr><tr><td>推理延迟（均值 / 高分位）</td><td>待测</td><td>待测</td><td>目标部署硬件</td></tr><tr><td>内存与吞吐</td><td>待测</td><td>待测</td><td>相同 batch / 精度</td></tr><tr><td>扰动恢复表现</td><td>待测</td><td>待测</td><td>预先定义测试扰动</td></tr></tbody></table></div></section>
+
+<section class="lesson" id="pitfalls"><h2>15 · 常见错误与排查清单</h2><ul><li><b>把权重当作解释：</b>注意力权重是中间计算结果，不等于因果重要性。可用干预、消融和输入扰动进一步验证。</li><li><b>张量维度混淆：</b>确认 [B,T,D] 或 [T,B,D] 与 API 的配置相匹配。</li><li><b>Mask 语义错误：</b>确认布尔值语义、维度和 padding 位置。</li><li><b>忽略位置与时间：</b>如果顺序重要，检查模型是否获得适当的位置信息。</li><li><b>训练/部署不一致：</b>窗口长度、归一化、历史缓存和采样间隔必须一致。</li><li><b>只看单次最好结果：</b>用多随机种子和独立评估来减少偶然性。</li><li><b>忽略延迟预算：</b>在真实目标硬件和目标推理路径上测量。</li></ul></section>
+
+<section class="lesson quiz" id="quiz"><h2>16 · 学习自测</h2><p>先自己回答，再点击查看参考答案。</p>
+<h3>问题 1：QKᵀ 的形状通常为什么是 T×T？</h3><button onclick="toggle('a1')">查看答案</button><div class="answer" id="a1">因为有 T 个 Query，每个 Query 都与 T 个 Key 计算匹配分数，所以每个样本得到 T 行、T 列的分数矩阵。</div>
+<h3>问题 2：Softmax 后每一行代表什么？</h3><button onclick="toggle('a2')">查看答案</button><div class="answer" id="a2">对某一个 Query 而言，它对各个来源 Key/Value 位置的归一化权重。正常情况下非负且行和为 1。</div>
+<h3>问题 3：为什么要除以 √dₖ？</h3><button onclick="toggle('a3')">查看答案</button><div class="answer" id="a3">点积尺度通常随特征维度增加而变大，缩放有助于避免 Softmax 过度饱和，改善梯度与优化条件。</div>
+<h3>问题 4：Self-Attention 与 Cross-Attention 的主要区别是什么？</h3><button onclick="toggle('a4')">查看答案</button><div class="answer" id="a4">Self-Attention 的 Q/K/V 来自同一组输入；Cross-Attention 的 Q 来自一组输入，K/V 来自另一组输入。</div>
+<h3>问题 5：机器人历史窗口什么时候需要 Causal Mask？</h3><button onclick="toggle('a5')">查看答案</button><div class="answer" id="a5">取决于任务是否要求每个时间位置只能访问当时可见的信息。如果整个历史窗口在当前决策时都已知，双向编码该窗口通常不必仅因它是时序数据就加 Causal Mask；但不能让输入泄露未来状态。</div>
+<h3>问题 6：如何证明性能提升来自注意力而非模型变大？</h3><button onclick="toggle('a6')">查看答案</button><div class="answer" id="a6">建立参数量和训练预算尽量可比的基线，固定评估协议，使用多个随机种子，并做移除注意力等消融实验，同时比较性能和部署成本。</div>
+</section>
+
+<section class="lesson" id="checklist"><h2>学习清单与进度</h2><p class="muted">勾选状态保存在当前浏览器的 localStorage 中。清除浏览器站点数据或换浏览器后，进度可能不会保留。</p><div class="progressbar"><span id="progressFill"></span></div><p id="progressText" class="muted">已完成 0 项</p>
+<div class="check"><input type="checkbox" data-check="learn1"><label>我能用自己的话解释 Q、K、V 的作用</label></div>
+<div class="check"><input type="checkbox" data-check="learn2"><label>我能写出 Attention(Q,K,V) 的公式并解释每一步</label></div>
+<div class="check"><input type="checkbox" data-check="learn3"><label>我理解缩放因子 √dₖ 的作用</label></div>
+<div class="check"><input type="checkbox" data-check="learn4"><label>我能区分 Padding Mask 与 Causal Mask</label></div>
+<div class="check"><input type="checkbox" data-check="learn5"><label>我理解多头注意力和 Transformer Block</label></div>
+<div class="check"><input type="checkbox" data-check="learn6"><label>我运行过 PyTorch 示例并核对张量形状</label></div>
+<div class="check"><input type="checkbox" data-check="learn7"><label>我能为机器人任务提出可验证的注意力实验假设</label></div>
+<div class="check"><input type="checkbox" data-check="learn8"><label>我能设计公平基线、消融实验并测量部署延迟</label></div>
+<button onclick="resetProgress()" style="margin-top:12px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:white;cursor:pointer">重置本页进度</button>
+</section>
+</main></div>
+<div class="footer">机器人强化学习学习门户 · 注意力机制专题 · 可离线打开的独立 HTML 页面</div>
+<script>
+function toggle(id){const e=document.getElementById(id);e.style.display=e.style.display==='block'?'none':'block'}
+const checks=[...document.querySelectorAll('input[type="checkbox"][data-check]')];
+function updateProgress(){let n=0;checks.forEach(c=>{const k='attention-course:'+c.dataset.check;c.checked=localStorage.getItem(k)==='1';if(c.checked)n++});document.getElementById('progressFill').style.width=(checks.length?n/checks.length*100:0)+'%';document.getElementById('progressText').textContent=`已完成 ${n} / ${checks.length} 项（${Math.round(n/checks.length*100)}%）`}
+checks.forEach(c=>c.addEventListener('change',()=>{localStorage.setItem('attention-course:'+c.dataset.check,c.checked?'1':'0');updateProgress()}));
+function resetProgress(){if(confirm('确定重置本页学习进度吗？')){checks.forEach(c=>localStorage.removeItem('attention-course:'+c.dataset.check));updateProgress()}}
+updateProgress();
+</script>
+</body></html>
