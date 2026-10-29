@@ -1,19 +1,14 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>G1 AME 实验记录</title>
-<style>
-:root{color-scheme:light dark;--blue:#173f5f;--teal:#dceeea;--ink:#182533}
-*{box-sizing:border-box}body{margin:0;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f7fb;color:#182533}
-header{background:#173f5f;color:#fff;padding:28px max(22px,calc((100vw - 900px)/2))}
-main{max-width:900px;margin:28px auto;padding:0 20px 50px}
-article{background:#fff;border:1px solid #dce4ed;border-radius:14px;padding:22px;margin:16px 0}
-h1{line-height:1.25;margin:8px 0}h2{margin-top:28px}code,pre,.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
-.formula,pre{background:#eef4f8;padding:14px;border-radius:10px;overflow:auto;white-space:pre-wrap}
-.callout{background:#edf8f5;border-left:4px solid #3d9b8b;padding:12px 16px;border-radius:8px}
-a{color:#176b83} .back{display:inline-block;margin-top:12px;color:#fff}
-@media(prefers-color-scheme:dark){body{background:#111923;color:#e7edf4}article{background:#192432;border-color:#2c3a4a}.formula,pre{background:#101b28}.callout{background:#172e30}}
-</style>
-</head>
-<body><header><div>机器人强化学习 · 学习专题</div><h1>G1 AME 实验记录</h1><p>以可复现、可比较的实验验证网络改动是否有效。</p><a class="back" href="../index.html">← 返回学习门户</a></header><main>
-<article><h2>1. 实验模板</h2><div class="formula">问题：<br>假设：<br>基线 commit / 配置：<br>唯一改动：<br>训练步数 / wall-clock：<br>随机种子：<br>评估场景：<br>成功率 / 回报 / 跌倒率：<br>推理延迟 / 显存：<br>结论与下一步：</div></article>
-<article><h2>2. 注意力消融建议</h2><ul><li>Baseline：原始 MLP。</li><li>Variant A：仅替换时序编码器。</li><li>Variant B：仅对身体部位 token 使用 attention。</li><li>Variant C：改变 head 数或层数，控制参数量。</li><li>每组使用多个种子并报告均值、方差或置信区间。</li></ul></article>
-<article><h2>3. 结果解释</h2><p>不要只看单次最高回报。还应观察学习曲线、收敛速度、不同地形泛化、扰动恢复、动作平滑性和推理开销。记录失败实验同样重要。</p></article></main></body></html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="G1 AME 实验设计与记录：机器人强化学习学习专题。"><title>G1 AME 实验设计与记录 · 机器人强化学习工作台</title><link rel="stylesheet" href="../assets/portal.css"></head>
+<body data-page-key="g1-experiments"><header><div class="wrap"><span class="tag">机器人强化学习工作台 · 专题课程</span><h1>G1 AME 实验设计与记录</h1><p>以可复现和可证伪为原则，追踪基线、单变量改动、评估矩阵和失败案例。</p><a class="back" href="../index.html#notes">← 返回工作台</a></div></header><div class="layout"><nav aria-label="本页目录"><strong>本页目录</strong><a href="#protocol">01 实验要素</a><a href="#ablation">02 对照实验</a><a href="#robust">03 鲁棒性</a><a href="#report">04 报告模板</a><hr style="border:0;border-top:1px solid var(--line);margin:12px 0"><strong>相关专题</strong><a href="../modules/mdp.html">MDP 基础</a><a href="../modules/gae.html">GAE 优势估计</a><a href="../modules/ppo.html">PPO 算法</a><a href="../modules/attention.html">注意力课程</a><a href="../g1-ame/overview.html">G1 AME 项目</a></nav><main><section class="lesson" id="protocol"><h2>1. 一份实验记录至少包含什么？</h2><ul><li>问题与可证伪假设：明确要区分的机制及可能推翻假设的结果。</li><li>基线：代码版本、配置、模型 checkpoint、环境和依赖版本。</li><li>唯一主要改动：说明其他关键因素如何保持一致。</li><li>预算：训练步数 / wall-clock、随机种子数量、评估场景。</li><li>指标：成功率、回报、跌倒率、动作平滑性、扰动恢复和推理成本等。</li><li>证据：原始日志、JSON、视频、绘图脚本和汇总表路径。</li><li>结论：把直接观察与对原因的解释分开，列出下一步区分实验。</li></ul><div class="callout">首页“笔记与实验记录”提供可编辑的本地实验表单；保存后会显示记录列表，并随工作台备份导出。</div><p><a class="back" style="background:var(--brand);border-color:var(--brand);color:white" href="../index.html#notes">打开可编辑实验记录表 →</a></p></section><section class="lesson" id="ablation"><h2>2. 网络改动的对照实验</h2><div class="tablewrap"><table><thead><tr><th>组别</th><th>目的</th><th>控制条件</th></tr></thead><tbody><tr><td>Baseline</td><td>记录当前方法的可靠表现</td><td>固定评估协议、训练预算和日志方式</td></tr><tr><td>Variant A</td><td>只替换时序编码器</td><td>尽量控制参数量与计算预算</td></tr><tr><td>Variant B</td><td>只增加部位 / 地形 token 交互</td><td>保持观测、奖励和训练流程不变</td></tr><tr><td>Variant C</td><td>改变 head 数、窗口或层数</td><td>单次只改一个因素并记录推理成本</td></tr></tbody></table></div><p>使用多个随机种子和独立评估场景，报告中心趋势与离散程度。不要只报告一次运行的最好 checkpoint。</p></section><section class="lesson" id="robust"><h2>3. 复现与鲁棒性是不同问题</h2><div class="grid"><div class="mini"><h3>确定性复现</h3><p>同一配置和初始条件能否重复得到一致结果。它有助于排除实现不确定性。</p></div><div class="mini"><h3>鲁棒性评估</h3><p>改变初始状态、扰动、地形或参数后，策略是否仍满足预先定义的成功标准。</p></div><div class="mini"><h3>泛化评估</h3><p>在训练中未使用的场景、种子或条件下测试，而不是仅复用训练环境。</p></div><div class="mini"><h3>部署评估</h3><p>在目标硬件测推理时延、控制周期、安全限制与传感器接口。</p></div></div><p>建议在实验开始前写清楚成功标准、种子、扰动幅度、测试时长和失败条件，避免看到结果之后再调整判定规则。</p></section><section class="lesson" id="report"><h2>4. 结果报告模板</h2><div class="formula">实验编号 / 日期：
+代码 commit / checkpoint：
+基线配置：
+研究问题与可证伪假设：
+唯一主要改动：
+训练预算 / 随机种子：
+评估场景与扰动：
+主要指标（均值 / 波动）：
+失败案例与原始证据：
+直接观察：
+机制解释（待验证）：
+结论 / 下一步实验：</div></section><section class="lesson" id="checklist"><h2>学习清单与进度</h2><p class="muted">进度保存在当前浏览器，并使用与工作台一致的备份系统。</p><div class="progressbar"><span data-progress-fill></span></div><p class="muted" data-progress-text>正在读取进度…</p><div class="check"><input type="checkbox" data-check="experiments-baseline" id="e1"><label for="e1">已保存基线版本、配置与评估协议</label></div><div class="check"><input type="checkbox" data-check="experiments-seeds" id="e2"><label for="e2">已预先规定种子数量和成功标准</label></div><div class="check"><input type="checkbox" data-check="experiments-evidence" id="e3"><label for="e3">每条结论都关联原始证据与失败案例</label></div><button class="action" data-reset-progress type="button">重置本页进度</button></section></main></div><div class="footer">机器人强化学习工作台 · 独立专题 · 本地进度保存在当前浏览器</div><script src="../assets/portal.js"></script></body></html>

@@ -4,18 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>注意力机制：从数学原理到机器人实践</title>
-<style>
-:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#5d687d;--line:#dfe5ef;--accent:#3659d9;--soft:#edf1ff;--code:#111827;--good:#e8f7ef}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 system-ui,-apple-system,"Segoe UI",Arial,"Noto Sans SC",sans-serif}
-header{background:linear-gradient(135deg,#172554,#3659d9);color:white;padding:42px 22px 34px}header .wrap,main{max-width:1120px;margin:auto}header h1{font-size:clamp(28px,4vw,42px);line-height:1.2;margin:0 0 12px}header p{max-width:850px;color:#e1e8ff;margin:0}.tag{display:inline-block;border:1px solid #ffffff55;border-radius:999px;padding:3px 10px;font-size:13px;margin-bottom:14px}
-.layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:24px;max-width:1120px;margin:24px auto;padding:0 16px}
-nav{position:sticky;top:16px;align-self:start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;max-height:calc(100vh - 32px);overflow:auto}nav strong{display:block;margin-bottom:8px}nav a{display:block;color:var(--muted);text-decoration:none;padding:5px 8px;border-radius:7px;font-size:14px}nav a:hover{background:var(--soft);color:var(--accent)}
-main{min-width:0;margin:0}.lesson{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;margin-bottom:18px;scroll-margin-top:20px}.lesson h2{font-size:25px;margin:0 0 14px;line-height:1.35}.lesson h3{font-size:19px;margin:24px 0 8px}.muted{color:var(--muted)}.callout{background:var(--soft);border-left:4px solid var(--accent);padding:13px 16px;border-radius:8px;margin:16px 0}.success{background:var(--good);border-left-color:#20945a}.formula{background:#f0f3f9;border:1px solid var(--line);padding:14px 16px;border-radius:10px;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;line-height:1.9;white-space:normal}.code{background:var(--code);color:#e5e7eb;padding:16px;border-radius:10px;overflow:auto;font:13px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.mini{border:1px solid var(--line);border-radius:10px;padding:14px}.mini h3{margin:0 0 6px}.tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}th{background:#f0f3f9}.check{display:flex;gap:9px;align-items:flex-start;padding:7px 0}.check input{margin-top:7px;accent-color:var(--accent)}.progressbar{height:8px;background:#e4e8f0;border-radius:99px;overflow:hidden;margin:10px 0}.progressbar span{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}.quiz button{border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px 12px;cursor:pointer;margin:5px 5px 5px 0}.quiz button:hover{border-color:var(--accent)}.answer{display:none;background:var(--good);padding:12px;border-radius:8px;margin-top:8px}.footer{text-align:center;color:var(--muted);padding:28px 16px;font-size:13px}
-@media(max-width:800px){.layout{grid-template-columns:1fr}nav{position:relative;top:0;max-height:none}.grid{grid-template-columns:1fr}.lesson{padding:20px}.layout{padding:0 12px}}
-</style>
+<link rel="stylesheet" href="../assets/portal.css">
 </head>
-<body>
-<header><div class="wrap"><span class="tag">机器人强化学习学习门户 · 专题课程</span><h1>注意力机制：从数学原理到机器人实践</h1><p>从直觉出发，逐步学习 Query / Key / Value、缩放点积注意力、多头注意力、Transformer、PyTorch 实现，以及如何评估注意力模块在机器人策略中的实际价值。</p></div></header>
+<body data-page-key="attention">
+<header><div class="wrap"><span class="tag">机器人强化学习学习门户 · 专题课程</span><h1>注意力机制：从数学原理到机器人实践</h1><p>从直觉出发，逐步学习 Query / Key / Value、缩放点积注意力、多头注意力、Transformer、PyTorch 实现，以及如何评估注意力模块在机器人策略中的实际价值。</p><a class="back" href="../index.html#attention">← 返回工作台</a></div></header>
 <div class="layout">
 <nav><strong>课程目录</strong>
 <a href="#roadmap">学习路线</a><a href="#why">01 为什么需要注意力</a><a href="#qkv">02 Query / Key / Value</a><a href="#math">03 数学计算全过程</a><a href="#scale">04 缩放因子</a><a href="#mask">05 Mask</a><a href="#multihead">06 多头注意力</a><a href="#types">07 Self / Cross Attention</a><a href="#transformer">08 Transformer Block</a><a href="#position">09 位置与时间信息</a><a href="#pytorch">10 PyTorch 入门</a><a href="#maskcode">11 Mask 代码</a><a href="#complexity">12 复杂度与部署</a><a href="#robot">13 机器人/G1 AME 应用</a><a href="#experiment">14 实验设计</a><a href="#pitfalls">15 常见错误</a><a href="#quiz">16 自测题</a><a href="#checklist">学习清单</a>
@@ -106,11 +98,13 @@ y, weights = attn(
 </main></div>
 <div class="footer">机器人强化学习学习门户 · 注意力机制专题 · 可离线打开的独立 HTML 页面</div>
 <script>
-function toggle(id){const e=document.getElementById(id);e.style.display=e.style.display==='block'?'none':'block'}
+function toggle(id){const e=document.getElementById(id);if(!e)return;e.style.display=e.style.display==='block'?'none':'block'}
 const checks=[...document.querySelectorAll('input[type="checkbox"][data-check]')];
-function updateProgress(){let n=0;checks.forEach(c=>{const k='attention-course:'+c.dataset.check;c.checked=localStorage.getItem(k)==='1';if(c.checked)n++});document.getElementById('progressFill').style.width=(checks.length?n/checks.length*100:0)+'%';document.getElementById('progressText').textContent=`已完成 ${n} / ${checks.length} 项（${Math.round(n/checks.length*100)}%）`}
-checks.forEach(c=>c.addEventListener('change',()=>{localStorage.setItem('attention-course:'+c.dataset.check,c.checked?'1':'0');updateProgress()}));
-function resetProgress(){if(confirm('确定重置本页学习进度吗？')){checks.forEach(c=>localStorage.removeItem('attention-course:'+c.dataset.check));updateProgress()}}
+function readCheck(key){try{return localStorage.getItem(key)==='1'}catch(_){return false}}
+function writeCheck(key,value){try{localStorage.setItem(key,value?'1':'0');return true}catch(_){const text=document.getElementById('progressText');if(text)text.textContent='浏览器禁止本地存储；当前进度无法持久保存。';return false}}
+function updateProgress(){let n=0;checks.forEach(c=>{const k='rlportal:progress:detail:attention:'+c.dataset.check;c.checked=readCheck(k);if(c.checked)n++});document.getElementById('progressFill').style.width=(checks.length?n/checks.length*100:0)+'%';document.getElementById('progressText').textContent=`已完成 ${n} / ${checks.length} 项（${Math.round(n/checks.length*100)}%）`}
+checks.forEach(c=>c.addEventListener('change',()=>{writeCheck('rlportal:progress:detail:attention:'+c.dataset.check,c.checked);updateProgress()}));
+function resetProgress(){if(confirm('确定重置本页学习进度吗？')){checks.forEach(c=>{try{localStorage.removeItem('rlportal:progress:detail:attention:'+c.dataset.check)}catch(_){}});updateProgress()}}
 updateProgress();
 </script>
 </body></html>
