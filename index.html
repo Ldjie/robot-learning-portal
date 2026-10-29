@@ -36,7 +36,7 @@
       <div class="card-top"><div class="icon">◈</div><div><h3>PPO 策略优化</h3><span class="muted" style="font-size:12px">算法基础</span></div></div><p>从概率比率、优势函数到裁剪目标与训练日志诊断。</p><div class="tags"><span class="tag">策略梯度</span><span class="tag">训练稳定性</span></div><div class="card-action"><button data-open="ppo">在工作台学习 →</button><a href="./modules/ppo.html">深入专题 ↗</a></div>
     </article>
     <article class="card" data-terms="attention transformer self attention q k v 多头 注意力 张量 shape token 前向传播">
-      <div class="card-top"><div class="icon">✳</div><div><h3>注意力与 Transformer</h3><span class="muted" style="font-size:12px">网络结构</span></div></div><p>理解 Q/K/V、张量变形、多头注意力，以及在机器人策略中的验证方法。</p><div class="tags"><span class="tag">Q/K/V</span><span class="tag">张量流</span></div><div class="card-action"><button data-open="attention">快速回顾 →</button><a href="./modules/attention.html">完整课程 ↗</a></div>
+      <div class="card-top"><div class="icon">✳</div><div><h3>注意力与 Transformer</h3><span class="muted" style="font-size:12px">网络结构</span></div></div><p>交互调整 Softmax 权重、即时查看张量形状，并用自测检验 Q/K/V 与多头注意力。</p><div class="tags"><span class="tag">Q/K/V</span><span class="tag">张量流</span></div><div class="card-action"><button data-open="attention">快速回顾 →</button><a href="./modules/attention.html">完整课程 ↗</a></div>
     </article>
     <article class="card" data-terms="g1 ame humanoid 项目代码 实验 仓库 policy observation action 网络结构">
       <div class="card-top"><div class="icon">◎</div><div><h3>G1 AME 项目地图</h3><span class="muted" style="font-size:12px">源码与数据流</span></div></div><p>按训练入口、观测、网络、动作、奖励和部署接口建立代码索引。</p><div class="tags"><span class="tag">源码映射</span><span class="tag">真实实现待核对</span></div><div class="card-action"><button data-open="ame">查看工作清单 →</button><a href="./g1-ame/overview.html">项目地图 ↗</a></div>
@@ -78,11 +78,11 @@ const PREFIX='rlportal:';
 const NOTE_KEYS=['general','ame'];
 const PROGRESS_KEYS=['ppo1','ppo2','ppo3','att1','att2','att3','ame1','ame2','ame3','ame4','ame5','ame6','rob1','rob2','sim1','sim2'];
 const externalModules=[
- {title:'MDP 与强化学习基础',path:'./modules/mdp.html',desc:'状态、动作、转移、奖励、回报和部分可观测问题。',terms:'mdp state action reward transition return value 部分可观测 马尔可夫 决策'},
- {title:'GAE 优势估计',path:'./modules/gae.html',desc:'TD 残差、λ 参数、终止与 timeout 的处理。',terms:'gae advantage td lambda timeout bootstrap 优势 价值'},
- {title:'PPO 深入专题',path:'./modules/ppo.html',desc:'从代理目标到训练日志和代码排查。',terms:'ppo policy clip ratio kl entropy critic'},
+ {title:'MDP 与强化学习基础',path:'./modules/mdp.html',desc:'交互修改奖励与折扣因子，实时计算折扣回报。',terms:'mdp state action reward transition return value 部分可观测 马尔可夫 决策'},
+ {title:'GAE 优势估计',path:'./modules/gae.html',desc:'交互调节 γ/λ，逐步查看 TD 残差与优势递推。',terms:'gae advantage td lambda timeout bootstrap 优势 价值'},
+ {title:'PPO 深入专题',path:'./modules/ppo.html',desc:'拖动概率比率与 ε，观察裁剪目标曲线并完成自测。',terms:'ppo policy clip ratio kl entropy critic'},
  {title:'注意力机制完整课程',path:'./modules/attention.html',desc:'Q/K/V、多头注意力、PyTorch、Mask、自测题。',terms:'attention q k v multihead pytorch mask transformer token'},
- {title:'Transformer 基础',path:'./modules/transformer.html',desc:'Token、位置编码、残差、归一化与时序建模。',terms:'transformer token positional encoding residual layernorm'},
+ {title:'Transformer 基础',path:'./modules/transformer.html',desc:'交互计算 Q/K/V、注意力分数与合并多头的张量形状。',terms:'transformer token positional encoding residual layernorm'},
  {title:'G1 AME 项目总览',path:'./g1-ame/overview.html',desc:'项目地图、源码阅读顺序与验证约定。',terms:'g1 ame repository project source training runner'},
  {title:'G1 AME 网络与张量',path:'./g1-ame/network.html',desc:'观测到动作的前向传播与 shape 检查模板。',terms:'network tensor shape observation action attention flatten'},
  {title:'G1 AME 实验工作台',path:'./g1-ame/experiments.html',desc:'假设、基线、单变量改动、评估矩阵与结果归档。',terms:'experiment baseline ablation seed robustness evaluation'}

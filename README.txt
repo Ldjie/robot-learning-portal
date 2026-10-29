@@ -15,12 +15,15 @@ index.html
 - 导出包含学习进度、笔记和实验记录，并延迟释放下载 URL。
 - 新增可编辑实验记录表单；实验记录保存到当前浏览器，并可在工作台导出。
 - PPO 内容补充了 clip 不是参数更新硬约束的说明；项目网络页把示意 shape 明确标为模板，避免误认为已核实的 AME 实现。
+- 新增静态交互教学：PPO 裁剪目标曲线、Attention Softmax 权重与输出、注意力张量形状计算、GAE 递推计算、MDP 折扣回报计算，以及各专题即时反馈自测。
+- 交互内容在浏览器本地运行，无需后端或第三方 JavaScript 依赖；互动演示中的数值为教学示例，不代表 AME 的实际运行配置。
 
 目录结构
 --------
 - index.html                  工作台入口
 - assets/portal.css           独立专题的统一视觉样式
-- assets/portal.js            独立专题的进度保存与交互
+- assets/portal.js            独立专题的进度保存与通用交互
+- assets/interactive.js       PPO、GAE、Attention、Transformer、MDP 的交互式实验与自测
 - modules/ppo.html            PPO 深入专题
 - modules/attention.html      注意力机制课程
 - modules/transformer.html    Transformer 基础
