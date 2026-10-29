@@ -33,16 +33,44 @@
   }
   function setupShapes(){
     $$('[data-shape-lab]').forEach(root=>{
-      const b=$('[data-shape-b]',root),l=$('[data-shape-l]',root),d=$('[data-shape-d]',root),h=$('[data-shape-h]',root);if(!b||!l||!d||!h)return;
-      function update(){const B=clamp(Math.round(number(b,32)),1,512),L=clamp(Math.round(number(l,20)),1,512),D=number(d,128),H=number(h,4);b.value=B;l.value=L;const valid=D%H===0,head=valid?D/H:null;
-        $('[data-shape-x]',root).textContent=`[${B}, ${L}, ${D}]`;
-        $('[data-shape-qkv]',root).textContent=valid?`[${B}, ${H}, ${L}, ${head}]`:'不可计算：D ÷ h 非整数';
-        $('[data-shape-score]',root).textContent=`[${B}, ${H}, ${L}, ${L}]`;
-        $('[data-shape-merge]',root).textContent=`[${B}, ${L}, ${D}]`;
-        const status=$('[data-shape-status]',root);if(status){status.textContent=valid?`每头维度 dₖ = ${head}。注意力分数矩阵对每个头、每个 Query 位置计算所有 Key 的匹配。输出投影通常将合并结果映射回 D = ${D}。`:`当前 D = ${D} 不能被 h = ${H} 整除。请调整模型维度或头数，或采用显式设置每头维度的其他实现。`;status.classList.toggle('warning',!valid);}
-        const order=$('[data-transformer-order]',root),flow=$('[data-transformer-flow]',root);if(flow&&order)flow.textContent=order.value==='pre'?'Pre-LN：X → LN → Attention → 残差相加 → LN → FFN → 残差相加。不同实现的细节应以代码为准。':'Post-LN：X → Attention → 残差相加 → LN → FFN → 残差相加 → LN。具体层序应以真实模型实现为准。';
+      const b=$('[data-shape-b]',root),l=$('[data-shape-l]',root),d=$('[data-shape-d]',root),h=$('[data-shape-h]',root);
+      if(!b||!l||!d||!h)return;
+      const steps=[
+        {title:'第 1 步：输入 X',shape:(B,L,D,H,dh)=>`[${B}, ${L}, ${D}]`,explain:(B,L,D,H,dh)=>`X 的形状是 [B, L, D]。B=${B} 表示有 ${B} 组样本；L=${L} 表示每组有 ${L} 个 Token；D=${D} 表示每个 Token 用 ${D} 个数字表示。`,analogy:(B,L,D)=>`可以把它想成 ${B} 份表格，每份 ${L} 行，每行 ${D} 个特征数。`},
+        {title:'第 2 步：生成 Q、K、V',shape:(B,L,D,H,dh)=>`[${B}, ${L}, ${D}]`,explain:(B,L,D,H,dh)=>`线性层把每个 Token 的特征分别投影成 Q、K、V。常见配置让三者的形状仍是 [${B}, ${L}, ${D}]；数值变了，但批次数、Token 数和特征宽度没变。`,analogy:()=>`同一张表经过三种不同的“特征转换器”，表格的行数和列数不变，但每个格子的数值会变化。`},
+        {title:'第 3 步：把特征拆成多个头',shape:(B,L,D,H,dh)=>`[${B}, ${H}, ${L}, ${dh}]`,explain:(B,L,D,H,dh)=>`把每个 Token 的 ${D} 个特征分成 ${H} 份，每份 ${dh} 个特征（${H} × ${dh} = ${D}）。再把“头数”移到前面，方便每个头独立计算。`,analogy:(B,L,D,H,dh)=>`原来每行有 ${D} 个数；现在把它分成 ${H} 组、每组 ${dh} 个数。样本数 ${B} 和 Token 数 ${L} 没变。`},
+        {title:'第 4 步：计算 QKᵀ 匹配分数',shape:(B,L,D,H,dh)=>`[${B}, ${H}, ${L}, ${L}]`,explain:(B,L,D,H,dh)=>`每个头里，每个 Query 都要和全部 ${L} 个 Key 比较。于是每组样本、每个头都会得到一个 ${L} × ${L} 的分数表。矩阵乘法的形状是 [${B}, ${H}, ${L}, ${dh}] × [${B}, ${H}, ${dh}, ${L}] → [${B}, ${H}, ${L}, ${L}]。`,analogy:(B,L,D,H,dh)=>`把每个头想成一张“谁和谁有多相关”的表：${L} 个 Query 行 × ${L} 个 Key 列。这里最后两个数字都等于 Token 数。`},
+        {title:'第 5 步：Softmax 把分数变成权重',shape:(B,L,D,H,dh)=>`[${B}, ${H}, ${L}, ${L}]`,explain:(B,L,D,H,dh)=>`Softmax 不会改变表格的行数和列数，所以形状不变。它把每一行的分数转换成非负权重；通常每一行加起来等于 1，表示一个 Query 如何分配注意力。`,analogy:()=>`只是把“相关分数表”换成“权重表”，格子的数量没有变化。`},
+        {title:'第 6 步：按权重汇总 V',shape:(B,L,D,H,dh)=>`[${B}, ${H}, ${L}, ${dh}]`,explain:(B,L,D,H,dh)=>`权重表 [${B}, ${H}, ${L}, ${L}] 与 V [${B}, ${H}, ${L}, ${dh}] 相乘，汇总每个 Query 要从各个 Value 位置取多少信息。输出形状为 [${B}, ${H}, ${L}, ${dh}]。`,analogy:()=>`每个 Query 从 ${L} 个位置收集信息，但最后仍会得到每个头自己的 ${dh} 维表示。`},
+        {title:'第 7 步：把多个头拼回去',shape:(B,L,D,H,dh)=>`[${B}, ${L}, ${D}]`,explain:(B,L,D,H,dh)=>`先把形状 [${B}, ${H}, ${L}, ${dh}] 调整为 [${B}, ${L}, ${H}, ${dh}]，再把头数和每头维度合并：${H} × ${dh} = ${D}。因此回到 [${B}, ${L}, ${D}]。`,analogy:(B,L,D,H,dh)=>`把每行分开的 ${H} 组特征重新接在一起，每个 Token 又有 ${D} 个数。`},
+        {title:'第 8 步：输出投影',shape:(B,L,D,H,dh)=>`[${B}, ${L}, ${D}]`,explain:(B,L,D,H,dh)=>`拼接后通常再通过一个可学习的输出线性层。常见设置下，输出形状仍是 [${B}, ${L}, ${D}]，但特征会再次混合。`,analogy:()=>`最后再做一次特征转换，方便后续网络继续使用；外形通常不变。`}
+      ];
+      let active=0;
+      const prev=$('[data-shape-prev]',root),next=$('[data-shape-next]',root),reset=$('[data-shape-reset]',root),pipeline=$('[data-shape-pipeline]',root);
+      function update(){
+        const B=clamp(Math.round(number(b,2)),1,4),L=clamp(Math.round(number(l,3)),1,6),D=number(d,8);
+        b.value=B;l.value=L;
+        const hOptions=[...h.options];hOptions.forEach(option=>{option.disabled=(D%Number(option.value)!==0)});
+        if(D%number(h,2)!==0){const valid=hOptions.filter(o=>D%Number(o.value)===0).map(o=>Number(o.value));h.value=String(valid.reduce((best,v)=>Math.abs(v-number(h,2))<Math.abs(best-number(h,2))?v:best,valid[0]));}
+        const H=number(h,2),dh=D/H;
+        const vals=[B,L,D,H,dh];
+        $('[data-shape-beginner-status]',root).textContent=`当前例子：${B} 组样本，每组 ${L} 个 Token，每个 Token ${D} 个特征，分成 ${H} 个头；每头 ${D} ÷ ${H} = ${dh} 个特征。`;
+        steps.forEach((step,i)=>{const el=$(`[data-shape-pipe-shape="${i}"]`,root);if(el)el.textContent=step.shape(...vals);});
+        const step=steps[active];
+        $('[data-shape-step-count]',root).textContent=`第 ${active+1} / ${steps.length} 步`;
+        $('[data-shape-step-title]',root).textContent=step.title;
+        $('[data-shape-current]',root).textContent=step.shape(...vals);
+        $('[data-shape-step-explain]',root).textContent=step.explain(...vals);
+        $('[data-shape-step-analogy]',root).textContent=step.analogy(...vals);
+        if(prev)prev.disabled=active===0;if(next)next.disabled=active===steps.length-1;
+        $$('[data-shape-step]',root).forEach(btn=>{const selected=Number(btn.dataset.shapeStep)===active;btn.classList.toggle('active',selected);btn.setAttribute('aria-pressed',selected?'true':'false');});
+        const status=$('[data-shape-status]',root);if(status){status.textContent=active===2?`这一步没有删掉特征：每个 Token 的 ${D} 个特征被重新组织成 ${H} 头 × ${dh} 个特征。`:active===3?`记住乘法规则：[..., ${L}, ${dh}] × [..., ${dh}, ${L}] → [..., ${L}, ${L}]。中间的 ${dh} 对齐并被消去，留下 Query 数和 Key 数。`:active===6?`拼接头时把 ${H} 个头的 ${dh} 维特征接在一起，所以 ${H} × ${dh} = ${D}，形状回到 [${B}, ${L}, ${D}]。`:`目前看到的是第 ${active+1} 步。点击“下一步”，观察形状为什么会变或保持不变。`;}
       }
-      [b,l,d,h,$('[data-transformer-order]',root)].filter(Boolean).forEach(el=>el.addEventListener('input',update));update();
+      if(prev)prev.addEventListener('click',()=>{active=Math.max(0,active-1);update();});
+      if(next)next.addEventListener('click',()=>{active=Math.min(steps.length-1,active+1);update();});
+      if(reset)reset.addEventListener('click',()=>{active=0;update();});
+      $$('[data-shape-step]',root).forEach(btn=>btn.addEventListener('click',()=>{active=clamp(Number(btn.dataset.shapeStep),0,steps.length-1);update();}));
+      [b,l,d,h].forEach(el=>el.addEventListener('change',update));update();
     });
   }
   function setupGAE(){
