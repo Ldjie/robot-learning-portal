@@ -87,62 +87,6 @@ Token 2: [0, 4, 6 |  0, 6, 5]
 形状：[1, 2, 6]</pre></div>
     <div class="mini"><h4>竖线代表什么？</h4><p>竖线只是为了阅读方便：左侧 3 个数属于头 1，右侧 3 个数属于头 2。它不是张量中的额外数字。</p><p>拆头后 Q、K、V 的形状是 <code>[1, 2, 2, 3]</code>；注意力分数的形状是 <code>[1, 2, 2, 2]</code>。前者最后两维是“Token、每头特征”，后者最后两维是“Query、Key”。</p></div>
   </div>
-  <style>
-    .shape-deep-dive{margin:1.2rem 0;padding:1rem;border:1px solid var(--line,#d7deea);border-radius:14px;background:var(--panel,#fff)}
-    .shape-deep-dive h3{margin:.1rem 0 .6rem}
-    .shape-deep-dive h4{margin:.2rem 0 .5rem}
-    .shape-deep-dive .shape-eq{font-size:1.02rem;font-weight:700;text-align:center;line-height:1.8;overflow-wrap:anywhere}
-    .shape-deep-dive .shape-note{margin:.55rem 0 0;color:var(--muted,#5e6878)}
-    .shape-deep-dive .shape-matrix{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
-    .shape-deep-dive .shape-matrix table{width:100%;border-collapse:separate;border-spacing:4px;text-align:center}
-    .shape-deep-dive .shape-matrix th,.shape-deep-dive .shape-matrix td{padding:.48rem .3rem;border-radius:6px;background:var(--soft,#f0f4fa)}
-    .shape-deep-dive .shape-matrix th{font-size:.88rem}
-    .shape-deep-dive .shape-matrix td{font-variant-numeric:tabular-nums;font-weight:650}
-    .shape-deep-dive .shape-dimension-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem}
-    .shape-deep-dive .shape-dimension{border-radius:9px;padding:.65rem .45rem;text-align:center;background:var(--soft,#f0f4fa)}
-    .shape-deep-dive .shape-dimension strong{display:block;font-size:1.25rem}
-    .shape-deep-dive .shape-dimension span{display:block;font-size:.8rem;color:var(--muted,#5e6878)}
-    @media(max-width:650px){.shape-deep-dive .shape-matrix{grid-template-columns:1fr}.shape-deep-dive .shape-dimension-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  </style>
-  <div class="shape-deep-dive" aria-labelledby="split-head-title">
-    <h3 id="split-head-title">第一部分：为什么拆头后 Q、K、V 的形状是 <code>[1, 2, 2, 3]</code>？</h3>
-    <p>先看拆头前的形状 <code>[1, 2, 6]</code>，它表示 <strong>1 个样本、2 个 Token、每个 Token 6 个数</strong>。我们把每个 Token 的 6 个数切成两半：前 3 个给头 1，后 3 个给头 2。</p>
-    <div class="shape-dimension-row" aria-label="拆头后的四个维度">
-      <div class="shape-dimension"><strong>1</strong><span>样本数 B</span></div>
-      <div class="shape-dimension"><strong>2</strong><span>注意力头数 h</span></div>
-      <div class="shape-dimension"><strong>2</strong><span>Token 数 L</span></div>
-      <div class="shape-dimension"><strong>3</strong><span>每头特征数 dₕ</span></div>
-    </div>
-    <div class="formula shape-eq">[B, L, D] = [1, 2, 6] → [B, h, L, dₕ] = [1, 2, 2, 3]</div>
-    <div class="grid">
-      <div class="mini"><h4>Token 1：6 个数拆成两组</h4><pre class="formula">原始：[1, 0, 0 | 1, 0, 0]
-头 1：[1, 0, 0]
-头 2：[1, 0, 0]</pre></div>
-      <div class="mini"><h4>Token 2：同样拆成两组</h4><pre class="formula">原始：[0, 1, 0 | 0, 1, 0]
-头 1：[0, 1, 0]
-头 2：[0, 1, 0]</pre></div>
-    </div>
-    <div class="callout"><strong>容易混淆的地方：</strong>形状里的第二个 <code>2</code> 是“注意力头数”，第三个 <code>2</code> 是“Token 数”。拆头没有把两个 Token 分给不同的头；<strong>每个头都会保留全部 2 个 Token</strong>，只不过每个 Token 在该头里只剩 3 个特征。</div>
-    <p class="shape-note">这个例子里的 Q、K、V 都遵循相同的形状变化。区别在于它们存放的数值和用途不同：Q 用来发起匹配，K 用来参与匹配，V 是之后被加权汇总的内容。</p>
-  </div>
-  <div class="shape-deep-dive" aria-labelledby="score-shape-title">
-    <h3 id="score-shape-title">第二部分：为什么注意力分数的形状是 <code>[1, 2, 2, 2]</code>？</h3>
-    <p>拆头后，每个头的 Q、K 都可以看成一个 <code>[2, 3]</code> 矩阵：2 行代表 2 个 Token，每行 3 个特征。计算点积时，K 的最后两个维度要转置：</p>
-    <div class="formula shape-eq">Qₕ： [2, 3]　×　Kₕᵀ： [3, 2]　→　分数矩阵： [2, 2]</div>
-    <p>中间的维度 <code>3</code> 被点积计算“消掉”：每一对 Query 和 Key 的 3 个数相乘再相加，最终只留下 <strong>一个分数</strong>。每个 Query 都要与全部 2 个 Key 比较，所以会得到 2×2 的矩阵。</p>
-    <div class="shape-matrix">
-      <div class="mini"><h4>头 1：原始点积分数 QKᵀ</h4><table aria-label="头1原始注意力分数"><thead><tr><th></th><th>Key 1</th><th>Key 2</th></tr></thead><tbody><tr><th>Query 1</th><td>1</td><td>0</td></tr><tr><th>Query 2</th><td>0</td><td>1</td></tr></tbody></table><p class="shape-note">Query 1 与 Key 1 的点积是 1，与 Key 2 的点积是 0；Query 2 同理。</p></div>
-      <div class="mini"><h4>头 2：原始点积分数 QKᵀ</h4><table aria-label="头2原始注意力分数"><thead><tr><th></th><th>Key 1</th><th>Key 2</th></tr></thead><tbody><tr><th>Query 1</th><td>0</td><td>1</td></tr><tr><th>Query 2</th><td>1</td><td>0</td></tr></tbody></table><p class="shape-note">这个头的 K 排列不同，因此它的匹配分数与头 1 不同。</p></div>
-    </div>
-    <div class="formula shape-eq">[B, h, L, L] = [1, 2, 2, 2]</div>
-    <div class="shape-dimension-row" aria-label="注意力分数的四个维度">
-      <div class="shape-dimension"><strong>1</strong><span>样本数 B</span></div>
-      <div class="shape-dimension"><strong>2</strong><span>注意力头数 h</span></div>
-      <div class="shape-dimension"><strong>2</strong><span>Query 数</span></div>
-      <div class="shape-dimension"><strong>2</strong><span>Key 数</span></div>
-    </div>
-    <div class="callout"><strong>请特别记住：</strong>拆头后的 Q/K/V 是 <code>[1, 2, 2, 3]</code>，最后一个 <code>3</code> 是每头的特征数；分数矩阵变成 <code>[1, 2, 2, 2]</code>，最后两个 <code>2</code> 分别表示 Query 位置和 Key 位置。除以 √3、做 Softmax 都不会改变分数矩阵的形状。</div>
-  </div>
   <div class="control-row"><label for="numeric-query-token">选择当前 Query</label><select id="numeric-query-token" data-numeric-query><option value="0" selected>Token 1</option><option value="1">Token 2</option></select><span></span></div>
   <p data-numeric-query-summary aria-live="polite">当前查看 Token 1：分别计算两个头对 Token 1 的注意力。</p>
   <div class="lab-grid">
