@@ -72,6 +72,32 @@
   <div class="callout" data-shape-status>关键点：拆分头会改变维度的组织方式；算注意力分数会把最后一维 dₕ 变成另一个位置维度 L。</div>
 </div>
 <div class="shape-faq"><h3>现在只需要记住这三件事</h3><ol><li><strong>拆分头：</strong>把每个 Token 的 D 个特征分成 h 份，每份 dₕ=D÷h 个数。数字总量没有凭空增加。</li><li><strong>算分数：</strong>每个 Query 都要和 L 个 Key 比较，所以分数矩阵是 <code>[B, h, L, L]</code>。</li><li><strong>合并头：</strong>把 h 个头的输出拼回一起，h×dₕ=D，所以通常回到 <code>[B, L, D]</code>。</li></ol></div>
+<div class="lab" data-numeric-attention>
+  <div class="lab-head"><div><div class="small-kicker">Numerical walk-through</div><h3>具体数字走一遍：分头 → 打分 → Softmax → 加权求和</h3></div><span class="lab-tag">可切换 Token</span></div>
+  <p>为了能手算，我们另用一个很小的例子：<strong>B=1、L=2、D=6、h=2</strong>，所以每头维度 <strong>dₕ=6÷2=3</strong>。下面直接给出投影后的 Q、K、V；真实模型会先用可学习矩阵从 X 计算它们。</p>
+  <div class="grid">
+    <div class="mini"><h4>Q：查询向量</h4><pre class="formula">Token 1: [1, 0, 0 | 1, 0, 0]
+Token 2: [0, 1, 0 | 0, 1, 0]
+形状：[1, 2, 6]</pre></div>
+    <div class="mini"><h4>K：用于匹配的向量</h4><pre class="formula">Token 1: [1, 0, 0 | 0, 1, 0]
+Token 2: [0, 1, 0 | 1, 0, 0]
+形状：[1, 2, 6]</pre></div>
+    <div class="mini"><h4>V：真正要汇总的信息</h4><pre class="formula">Token 1: [2, 1, 3 | 10, 2, 1]
+Token 2: [0, 4, 6 |  0, 6, 5]
+形状：[1, 2, 6]</pre></div>
+    <div class="mini"><h4>竖线代表什么？</h4><p>竖线只是为了阅读方便：左侧 3 个数属于头 1，右侧 3 个数属于头 2。它不是张量中的额外数字。</p><p>拆头后 Q、K、V 的形状是 <code>[1, 2, 2, 3]</code>；注意力分数的形状是 <code>[1, 2, 2, 2]</code>。前者最后两维是“Token、每头特征”，后者最后两维是“Query、Key”。</p></div>
+  </div>
+  <div class="control-row"><label for="numeric-query-token">选择当前 Query</label><select id="numeric-query-token" data-numeric-query><option value="0" selected>Token 1</option><option value="1">Token 2</option></select><span></span></div>
+  <p data-numeric-query-summary aria-live="polite">当前查看 Token 1：分别计算两个头对 Token 1 的注意力。</p>
+  <div class="lab-grid">
+    <div class="mini"><h4>头 1：更偏向同位置的 Key</h4><p><strong>原始点积 QKᵀ</strong></p><pre class="formula" data-numeric-raw="0">[1.000, 0.000]</pre><p><strong>除以 √dₕ = √3 ≈ 1.732</strong></p><pre class="formula" data-numeric-scaled="0">[0.577, 0.000]</pre><p><strong>Softmax 后的权重</strong></p><pre class="formula" data-numeric-weights="0">[0.640, 0.360]</pre><p><strong>权重乘以 V 并求和</strong></p><pre class="formula" data-numeric-calc="0">0.640 × [2, 1, 3] + 0.360 × [0, 4, 6]
+= [1.281, 2.079, 4.079]</pre></div>
+    <div class="mini"><h4>头 2：本例中更偏向另一个位置</h4><p><strong>原始点积 QKᵀ</strong></p><pre class="formula" data-numeric-raw="1">[0.000, 1.000]</pre><p><strong>除以 √dₕ = √3 ≈ 1.732</strong></p><pre class="formula" data-numeric-scaled="1">[0.000, 0.577]</pre><p><strong>Softmax 后的权重</strong></p><pre class="formula" data-numeric-weights="1">[0.360, 0.640]</pre><p><strong>权重乘以 V 并求和</strong></p><pre class="formula" data-numeric-calc="1">0.360 × [10, 2, 1] + 0.640 × [0, 6, 5]
+= [3.595, 4.562, 3.562]</pre></div>
+  </div>
+  <div class="callout success"><strong>拼接两个头：</strong><pre class="formula" data-numeric-concat>[1.281, 2.079, 4.079 | 3.595, 4.562, 3.562]</pre><span data-numeric-final-explain>当前 Token 的两个头各输出 3 个数，拼接后得到 6 维向量；两个 Token 的结果合起来，形状是 [1, 2, 6]。</span></div>
+  <p class="lab-note">这组数值刻意设计成简单例子，目的是把每一步算清楚，不代表训练后的真实注意力。为了隔离注意力计算，本例暂设输出投影 W<sub>O</sub>=I（单位矩阵），因此数值不变；真实模型中的 W<sub>O</sub> 通常是可学习的，会进一步混合这些特征。</p>
+</div>
 <div class="shape-checks"><h3>小测一下：不用死记，试着读形状</h3>
 <div class="quiz-box" data-quiz data-quiz-id="shape-q1"><fieldset><legend>1. 如果输入形状是 <code>[2, 3, 8]</code>，数字 3 表示什么？</legend><div class="quiz-options"><label class="quiz-option"><input type="radio" name="shape-q1" value="a"><span>同时处理 3 组样本</span></label><label class="quiz-option"><input type="radio" name="shape-q1" value="b"><span>每组有 3 个 Token</span></label><label class="quiz-option"><input type="radio" name="shape-q1" value="c"><span>每个 Token 有 3 个特征</span></label><label class="quiz-option"><input type="radio" name="shape-q1" value="d"><span>模型有 3 个注意力头</span></label></div><div class="quiz-feedback" data-feedback hidden></div><div class="quiz-actions"><button type="button" data-quiz-check data-correct="b" data-explanation="形状按 [B, L, D] 排列，第二个数 L 表示每组序列里的 Token 数。">检查答案</button><span class="quiz-score" data-quiz-score></span></div></fieldset></div>
 <div class="quiz-box" data-quiz data-quiz-id="shape-q2"><fieldset><legend>2. 常见配置中，D=8 且头数 h=2，每个头分到多少个特征？</legend><div class="quiz-options"><label class="quiz-option"><input type="radio" name="shape-q2" value="a"><span>2 个</span></label><label class="quiz-option"><input type="radio" name="shape-q2" value="b"><span>4 个</span></label><label class="quiz-option"><input type="radio" name="shape-q2" value="c"><span>8 个</span></label><label class="quiz-option"><input type="radio" name="shape-q2" value="d"><span>16 个</span></label></div><div class="quiz-feedback" data-feedback hidden></div><div class="quiz-actions"><button type="button" data-quiz-check data-correct="b" data-explanation="每头维度 dₕ=D÷h=8÷2=4。两头合计 2×4=8 个特征。">检查答案</button><span class="quiz-score" data-quiz-score></span></div></fieldset></div>

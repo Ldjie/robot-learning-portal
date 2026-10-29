@@ -31,6 +31,50 @@
     function update(){const raw=scores.map((el)=>number(el,0));raw.forEach((v,i)=>$(`[data-attn-score-out="${i}"]`,root).textContent=fmt(v,1));const d=number(dk,4),scaled=raw.map(v=>v/Math.sqrt(d));const max=Math.max(...scaled),exps=scaled.map(x=>Math.exp(x-max)),sum=exps.reduce((a,b)=>a+b,0),weights=exps.map(x=>x/sum),values=[1,3,-1],out=weights.reduce((acc,w,i)=>acc+w*values[i],0);weights.forEach((w,i)=>{$(`[data-attn-bar="${i}"]`,root).style.width=(w*100)+'%';$(`[data-attn-weight="${i}"]`,root).textContent=fmt(w,3)});$('[data-attn-sum]',root).textContent=fmt(weights.reduce((a,b)=>a+b,0),3);$('[data-attn-output]',root).textContent=fmt(out,3);}
     [...scores,dk].forEach(el=>el.addEventListener('input',update));update();
   }
+  function setupNumericAttention(){
+    const root=$('[data-numeric-attention]');if(!root)return;
+    const selector=$('[data-numeric-query]',root);
+    // Each inner array is [token 1, token 2], with 3 features per token and per head.
+    const queries=[
+      [[1,0,0],[0,1,0]],
+      [[1,0,0],[0,1,0]]
+    ];
+    const keys=[
+      [[1,0,0],[0,1,0]],
+      [[0,1,0],[1,0,0]]
+    ];
+    const values=[
+      [[2,1,3],[0,4,6]],
+      [[10,2,1],[0,6,5]]
+    ];
+    function update(){
+      const qi=Number(selector&&selector.value)===1?1:0;
+      const headOutputs=[];
+      for(let head=0;head<2;head++){
+        const q=queries[head][qi];
+        const raw=keys[head].map(k=>q.reduce((sum,v,i)=>sum+v*k[i],0));
+        const scaled=raw.map(v=>v/Math.sqrt(3));
+        const max=Math.max(...scaled),exps=scaled.map(v=>Math.exp(v-max)),sum=exps.reduce((a,b)=>a+b,0),weights=exps.map(v=>v/sum);
+        const output=values[head][0].map((_,dim)=>weights.reduce((acc,w,i)=>acc+w*values[head][i][dim],0));
+        headOutputs.push(output);
+        const rawEl=$(`[data-numeric-raw="${head}"]`,root),scaledEl=$(`[data-numeric-scaled="${head}"]`,root),weightsEl=$(`[data-numeric-weights="${head}"]`,root),calcEl=$(`[data-numeric-calc="${head}"]`,root);
+        if(rawEl)rawEl.textContent='['+raw.map(v=>fmt(v,3)).join(', ')+']';
+        if(scaledEl)scaledEl.textContent='['+scaled.map(v=>fmt(v,3)).join(', ')+']';
+        if(weightsEl)weightsEl.textContent='['+weights.map(v=>fmt(v,3)).join(', ')+']';
+        if(calcEl){
+          const v1='['+values[head][0].map(v=>fmt(v,0)).join(', ')+']',v2='['+values[head][1].map(v=>fmt(v,0)).join(', ')+']',out='['+output.map(v=>fmt(v,3)).join(', ')+']';
+          calcEl.textContent=`${fmt(weights[0],3)} × ${v1} + ${fmt(weights[1],3)} × ${v2}\n= ${out}`;
+        }
+      }
+      const concat=headOutputs.flat();
+      const concatEl=$('[data-numeric-concat]',root),summary=$('[data-numeric-query-summary]',root),final=$('[data-numeric-final-explain]',root);
+      if(concatEl)concatEl.textContent='['+headOutputs.map(v=>v.map(x=>fmt(x,3)).join(', ')).join(' | ')+']';
+      if(summary)summary.textContent=`当前查看 Token ${qi+1}：先分别计算头 1 和头 2 对这个 Query 的权重，再各自汇总 Value。`;
+      if(final)final.textContent=`Token ${qi+1} 的两个头各输出 3 个数，拼接后为 [${concat.map(v=>fmt(v,3)).join(', ')}]（本例暂设 W_O=I）；把 Token 1、Token 2 的结果叠起来，整个输出形状是 [1, 2, 6]。`;
+    }
+    if(selector)selector.addEventListener('change',update);
+    update();
+  }
   function setupShapes(){
     $$('[data-shape-lab]').forEach(root=>{
       const b=$('[data-shape-b]',root),l=$('[data-shape-l]',root),d=$('[data-shape-d]',root),h=$('[data-shape-h]',root);
@@ -90,5 +134,5 @@
     // Mark the current section in the sidebar as the learner scrolls, without a framework.
     const links=$$('nav a[href^="#"]');if(!('IntersectionObserver'in window)||!links.length)return;const targets=links.map(a=>$(a.getAttribute('href'))).filter(Boolean);if(!targets.length)return;const observer=new IntersectionObserver(entries=>{entries.forEach(e=>{if(!e.isIntersecting)return;links.forEach(a=>{if(a.getAttribute('href')==='#'+e.target.id)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current')})})},{rootMargin:'-15% 0px -70% 0px'});targets.forEach(t=>observer.observe(t));
   }
-  setupPPO();setupAttention();setupShapes();setupGAE();setupReturn();setupQuizzes();setupReturnLinks();
+  setupPPO();setupAttention();setupShapes();setupNumericAttention();setupGAE();setupReturn();setupQuizzes();setupReturnLinks();
 })();
