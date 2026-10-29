@@ -63,7 +63,7 @@
         if(weightsEl)weightsEl.textContent='['+weights.map(v=>fmt(v,3)).join(', ')+']';
         if(calcEl){
           const v1='['+values[head][0].map(v=>fmt(v,0)).join(', ')+']',v2='['+values[head][1].map(v=>fmt(v,0)).join(', ')+']',out='['+output.map(v=>fmt(v,3)).join(', ')+']';
-          calcEl.textContent=`${fmt(weights[0],3)} × ${v1} + ${fmt(weights[1],3)} × ${v2}\n= ${out}`;
+          calcEl.textContent=`${fmt(weights[0],6)} × ${v1} + ${fmt(weights[1],6)} × ${v2}\n= ${out}`;
         }
       }
       const concat=headOutputs.flat();

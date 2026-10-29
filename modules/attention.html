@@ -72,32 +72,189 @@
   <div class="callout" data-shape-status>关键点：拆分头会改变维度的组织方式；算注意力分数会把最后一维 dₕ 变成另一个位置维度 L。</div>
 </div>
 <div class="shape-faq"><h3>现在只需要记住这三件事</h3><ol><li><strong>拆分头：</strong>把每个 Token 的 D 个特征分成 h 份，每份 dₕ=D÷h 个数。数字总量没有凭空增加。</li><li><strong>算分数：</strong>每个 Query 都要和 L 个 Key 比较，所以分数矩阵是 <code>[B, h, L, L]</code>。</li><li><strong>合并头：</strong>把 h 个头的输出拼回一起，h×dₕ=D，所以通常回到 <code>[B, L, D]</code>。</li></ol></div>
-<div class="lab" data-numeric-attention>
-  <div class="lab-head"><div><div class="small-kicker">Numerical walk-through</div><h3>具体数字走一遍：分头 → 打分 → Softmax → 加权求和</h3></div><span class="lab-tag">可切换 Token</span></div>
-  <p>为了能手算，我们另用一个很小的例子：<strong>B=1、L=2、D=6、h=2</strong>，所以每头维度 <strong>dₕ=6÷2=3</strong>。下面直接给出投影后的 Q、K、V；真实模型会先用可学习矩阵从 X 计算它们。</p>
-  <div class="grid">
-    <div class="mini"><h4>Q：查询向量</h4><pre class="formula">Token 1: [1, 0, 0 | 1, 0, 0]
+<div class="lab numeric-lab" data-numeric-attention>
+  <div class="lab-head">
+    <div><div class="small-kicker">Numerical walk-through</div><h3>具体数字走一遍：拆头 → 点积 → 缩放 → Softmax → 汇总 Value</h3></div>
+    <span class="lab-tag">可切换 Query Token</span>
+  </div>
+  <p>我们专门选一组能手算的数字：<strong>B=1、L=2、D=6、h=2</strong>。每个头有 <strong>dₕ=D÷h=6÷2=3</strong> 个特征。提醒：这里展示的是投影后的 Q、K、V 数值；真实模型一般先通过可学习线性层从输入 X 得到它们。</p>
+  <div class="numeric-facts-grid">
+    <div class="numeric-fact"><span>样本数 B</span><strong>1</strong><small>一份观测序列</small></div>
+    <div class="numeric-fact"><span>Token 数 L</span><strong>2</strong><small>Token 1 与 Token 2</small></div>
+    <div class="numeric-fact"><span>特征数 D</span><strong>6</strong><small>每个 Token 共 6 个数</small></div>
+    <div class="numeric-fact"><span>头数 h</span><strong>2</strong><small>每头 3 个特征</small></div>
+  </div>
+
+  <h4>先看拆头前的数据：为什么是 [1, 2, 6]？</h4>
+  <p>以 Q 为例，它有 1 个样本、2 个 Token；每个 Token 是 6 维向量。K 和 V 的形状也一样，但它们的数值和功能不同。</p>
+  <div class="numeric-qkv-grid">
+    <div class="mini"><h4>Q：发起匹配的向量</h4><pre class="formula">Token 1: [1, 0, 0 | 1, 0, 0]
 Token 2: [0, 1, 0 | 0, 1, 0]
-形状：[1, 2, 6]</pre></div>
-    <div class="mini"><h4>K：用于匹配的向量</h4><pre class="formula">Token 1: [1, 0, 0 | 0, 1, 0]
+形状：[1, 2, 6]</pre><p class="numeric-small">每个 Token 的 6 个数，先按前 3 个、后 3 个分成两段。</p></div>
+    <div class="mini"><h4>K：供 Query 比较的向量</h4><pre class="formula">Token 1: [1, 0, 0 | 0, 1, 0]
 Token 2: [0, 1, 0 | 1, 0, 0]
-形状：[1, 2, 6]</pre></div>
-    <div class="mini"><h4>V：真正要汇总的信息</h4><pre class="formula">Token 1: [2, 1, 3 | 10, 2, 1]
+形状：[1, 2, 6]</pre><p class="numeric-small">Q 和 K 的点积决定匹配分数；不同的 K 会产生不同的分数。</p></div>
+    <div class="mini"><h4>V：稍后要汇总的信息</h4><pre class="formula">Token 1: [2, 1, 3 | 10, 2, 1]
 Token 2: [0, 4, 6 |  0, 6, 5]
-形状：[1, 2, 6]</pre></div>
-    <div class="mini"><h4>竖线代表什么？</h4><p>竖线只是为了阅读方便：左侧 3 个数属于头 1，右侧 3 个数属于头 2。它不是张量中的额外数字。</p><p>拆头后 Q、K、V 的形状是 <code>[1, 2, 2, 3]</code>；注意力分数的形状是 <code>[1, 2, 2, 2]</code>。前者最后两维是“Token、每头特征”，后者最后两维是“Query、Key”。</p></div>
+形状：[1, 2, 6]</pre><p class="numeric-small">算分数时不拿 V 来做匹配；Softmax 得到权重后，才用这些 V 做加权求和。</p></div>
   </div>
-  <div class="control-row"><label for="numeric-query-token">选择当前 Query</label><select id="numeric-query-token" data-numeric-query><option value="0" selected>Token 1</option><option value="1">Token 2</option></select><span></span></div>
-  <p data-numeric-query-summary aria-live="polite">当前查看 Token 1：分别计算两个头对 Token 1 的注意力。</p>
-  <div class="lab-grid">
-    <div class="mini"><h4>头 1：更偏向同位置的 Key</h4><p><strong>原始点积 QKᵀ</strong></p><pre class="formula" data-numeric-raw="0">[1.000, 0.000]</pre><p><strong>除以 √dₕ = √3 ≈ 1.732</strong></p><pre class="formula" data-numeric-scaled="0">[0.577, 0.000]</pre><p><strong>Softmax 后的权重</strong></p><pre class="formula" data-numeric-weights="0">[0.640, 0.360]</pre><p><strong>权重乘以 V 并求和</strong></p><pre class="formula" data-numeric-calc="0">0.640 × [2, 1, 3] + 0.360 × [0, 4, 6]
+  <div class="callout"><strong>竖线 “|” 只是帮助阅读：</strong>左边 3 个数分给头 1，右边 3 个数分给头 2。竖线不是特征，也不是实际张量中的一列。</div>
+
+  <style>
+    /* This lesson deliberately uses the portal theme tokens so it adapts to light/dark mode. */
+    .numeric-lab{color:var(--text)}
+    .numeric-facts-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+    .numeric-fact{min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+    .numeric-fact span,.numeric-fact small{display:block;color:var(--muted);font-size:12px}
+    .numeric-fact strong{display:block;margin:3px 0;font-size:24px;line-height:1.2;color:var(--brand-2);font-variant-numeric:tabular-nums}
+    .numeric-qkv-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+    .numeric-qkv-grid .mini{min-width:0}
+    .numeric-small{font-size:13px;color:var(--muted)}
+    .shape-deep-dive{margin:1.2rem 0;padding:1rem;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--text);min-width:0}
+    .shape-deep-dive h3{margin:.1rem 0 .6rem;color:var(--text)}
+    .shape-deep-dive h4{margin:.2rem 0 .5rem;color:var(--text)}
+    .shape-deep-dive p{line-height:1.75}
+    .shape-deep-dive .shape-eq{font-size:1.02rem;font-weight:700;text-align:center;line-height:1.8;overflow-wrap:anywhere;background:var(--code);color:var(--text);border-color:var(--line)}
+    .shape-deep-dive .shape-note{margin:.55rem 0 0;color:var(--muted);font-size:.9rem}
+    .shape-deep-dive .shape-matrix{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+    .shape-deep-dive .shape-matrix table{width:100%;border-collapse:separate;border-spacing:4px;text-align:center;font-variant-numeric:tabular-nums}
+    .shape-deep-dive .shape-matrix th,.shape-deep-dive .shape-matrix td{padding:.48rem .3rem;border:1px solid var(--line);border-radius:6px;background:var(--surface-2);color:var(--text)}
+    .shape-deep-dive .shape-matrix th{font-size:.88rem}
+    .shape-deep-dive .shape-matrix td{font-weight:700}
+    .shape-deep-dive .shape-dimension-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem;margin:.8rem 0}
+    .shape-deep-dive .shape-dimension{min-width:0;border:1px solid var(--line);border-radius:9px;padding:.65rem .45rem;text-align:center;background:var(--surface-2)}
+    .shape-deep-dive .shape-dimension strong{display:block;font-size:1.25rem;color:var(--brand-2)}
+    .shape-deep-dive .shape-dimension span{display:block;font-size:.8rem;color:var(--muted)}
+    .numeric-math-steps{display:grid;gap:9px;margin:12px 0}
+    .numeric-math-step{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);min-width:0}
+    .numeric-math-step h4{margin:0 0 6px}
+    .numeric-math-step p{margin:5px 0}
+    .numeric-inline-math{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+    .numeric-two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .numeric-token-table-wrap{overflow-x:auto;max-width:100%;margin:10px 0}
+    .numeric-token-table{width:100%;border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+    .numeric-token-table th,.numeric-token-table td{padding:9px;border:1px solid var(--line);text-align:left;vertical-align:top}
+    .numeric-token-table th{background:var(--surface-2);color:var(--text)}
+    .numeric-token-table td{background:var(--surface);color:var(--text)}
+    .numeric-token-table code{white-space:normal;overflow-wrap:anywhere}
+    .numeric-lab .control-row{grid-template-columns:minmax(130px,1fr) minmax(130px,1.2fr) 64px}
+    .numeric-lab [data-numeric-raw],.numeric-lab [data-numeric-scaled],.numeric-lab [data-numeric-weights],.numeric-lab [data-numeric-calc],.numeric-lab [data-numeric-concat]{min-width:0}
+    .numeric-result-card{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px;min-width:0}
+    .numeric-result-card h4{margin:0 0 8px}
+    @media(max-width:760px){.numeric-qkv-grid{grid-template-columns:1fr}.numeric-facts-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.numeric-two-col{grid-template-columns:1fr}}
+    @media(max-width:520px){.shape-deep-dive{padding:12px}.shape-deep-dive .shape-matrix{grid-template-columns:1fr}.shape-deep-dive .shape-dimension-row{grid-template-columns:repeat(2,minmax(0,1fr))}.numeric-lab .control-row{grid-template-columns:1fr 1.1fr 50px}.numeric-fact{padding:10px}}
+    @media(prefers-color-scheme:dark){.shape-deep-dive,.numeric-result-card{background:var(--surface);color:var(--text)}.shape-deep-dive .shape-matrix th,.shape-deep-dive .shape-matrix td,.shape-deep-dive .shape-dimension,.numeric-math-step{background:var(--surface-2);color:var(--text)}.numeric-token-table th{background:var(--surface-2);color:var(--text)}.numeric-token-table td{background:var(--surface);color:var(--text)}}
+  </style>
+
+  <div class="shape-deep-dive" aria-labelledby="split-head-title">
+    <h3 id="split-head-title">第一部分：拆头后 Q、K、V 为什么是 <code>[1, 2, 2, 3]</code>？</h3>
+    <h4>1. 先逐个读懂拆头前的形状</h4>
+    <div class="shape-dimension-row" aria-label="拆头前的三个维度">
+      <div class="shape-dimension"><strong>1</strong><span>B：样本数</span></div>
+      <div class="shape-dimension"><strong>2</strong><span>L：Token 数</span></div>
+      <div class="shape-dimension"><strong>6</strong><span>D：每个 Token 的特征数</span></div>
+    </div>
+    <p>所以 <code>[1, 2, 6]</code> 不是 1 行 2 列 6 个数字的普通三维空间，而是按约定组织的三维张量：<strong>1 个样本；样本里有 2 个 Token；每个 Token 是一个 6 维向量。</strong> Q、K、V 都先有这样的形状。</p>
+
+    <h4>2. 对每一个 Token，把 6 个特征分成 2 份</h4>
+    <div class="numeric-token-table-wrap"><table class="numeric-token-table"><thead><tr><th>张量</th><th>Token</th><th>拆头前：6 个数</th><th>头 1：前 3 个数</th><th>头 2：后 3 个数</th></tr></thead><tbody>
+      <tr><th>Q</th><td>Token 1</td><td><code>[1, 0, 0 | 1, 0, 0]</code></td><td><code>[1, 0, 0]</code></td><td><code>[1, 0, 0]</code></td></tr>
+      <tr><th>Q</th><td>Token 2</td><td><code>[0, 1, 0 | 0, 1, 0]</code></td><td><code>[0, 1, 0]</code></td><td><code>[0, 1, 0]</code></td></tr>
+      <tr><th>K</th><td>Token 1</td><td><code>[1, 0, 0 | 0, 1, 0]</code></td><td><code>[1, 0, 0]</code></td><td><code>[0, 1, 0]</code></td></tr>
+      <tr><th>K</th><td>Token 2</td><td><code>[0, 1, 0 | 1, 0, 0]</code></td><td><code>[0, 1, 0]</code></td><td><code>[1, 0, 0]</code></td></tr>
+      <tr><th>V</th><td>Token 1</td><td><code>[2, 1, 3 | 10, 2, 1]</code></td><td><code>[2, 1, 3]</code></td><td><code>[10, 2, 1]</code></td></tr>
+      <tr><th>V</th><td>Token 2</td><td><code>[0, 4, 6 | 0, 6, 5]</code></td><td><code>[0, 4, 6]</code></td><td><code>[0, 6, 5]</code></td></tr>
+    </tbody></table></div>
+    <p>也就是说，<strong>每个头都会看到全部两个 Token</strong>，而不是头 1 只拿 Token 1、头 2 只拿 Token 2。区别是：在某一个头内部，每个 Token 只保留分给该头的 3 个特征。</p>
+
+    <h4>3. 形状是怎么一步步排出来的？</h4>
+    <div class="numeric-math-steps">
+      <div class="numeric-math-step"><h4>步骤 A：把最后的 6 个特征分组</h4><p class="numeric-inline-math">[B, L, D] = [1, 2, 6]</p><p>将 D=6 解释为 h=2 组、每组 dₕ=3 个数，概念上先组织成 <code>[B, L, h, dₕ] = [1, 2, 2, 3]</code>。</p></div>
+      <div class="numeric-math-step"><h4>步骤 B：把“头数 h”放到 Token 数 L 前面</h4><p>模型常把张量轴调整为方便批量并行计算的顺序 <code>[B, h, L, dₕ]</code>，所以标准表达是：</p><p class="numeric-inline-math">[B, L, D] → [B, h, L, dₕ]</p><p>本例得到 <code>[1, 2, 2, 3]</code>。</p></div>
+    </div>
+    <div class="callout"><strong>本例最容易误解的巧合：</strong>头数 h=2、Token 数 L=2，所以轴顺序从 <code>[B, L, h, dₕ]</code> 调整为 <code>[B, h, L, dₕ]</code> 后，打印出来的数字恰好仍是 <code>[1, 2, 2, 3]</code>。这不表示两个轴的含义没变；只是 L 和 h 的数值刚好一样。若用 L=3、h=2、D=8，就会看到更容易区分的变化：<code>[1, 3, 8] → [1, 2, 3, 4]</code>。</div>
+    <div class="shape-dimension-row" aria-label="拆头后四个轴的含义">
+      <div class="shape-dimension"><strong>1</strong><span>第 1 轴：样本 B</span></div>
+      <div class="shape-dimension"><strong>2</strong><span>第 2 轴：头 h</span></div>
+      <div class="shape-dimension"><strong>2</strong><span>第 3 轴：Token L</span></div>
+      <div class="shape-dimension"><strong>3</strong><span>第 4 轴：每头特征 dₕ</span></div>
+    </div>
+    <p class="shape-note">Q、K、V 都经历同样的形状调整，最后得到 <code>[1, 2, 2, 3]</code>。形状只说明各轴有多长，不会告诉你数值本身；要看数值如何分头，请看上面的逐行表格。</p>
+  </div>
+
+  <div class="shape-deep-dive" aria-labelledby="score-shape-title">
+    <h3 id="score-shape-title">第二部分：注意力分数为什么变成 <code>[1, 2, 2, 2]</code>？</h3>
+    <h4>1. 先只看其中一个头：矩阵乘法为什么是 [2, 3] × [3, 2]？</h4>
+    <p>取头 1。这个头里的 Q 有两个 Token，每个 Token 3 个数，所以 <code>Q₁</code> 的形状是 <code>[2, 3]</code>；K 同理也是 <code>[2, 3]</code>。要让每一行 Query 与每一行 Key 做点积，先把 K 的行列互换，得到 <code>K₁ᵀ</code>，形状为 <code>[3, 2]</code>。</p>
+    <div class="formula shape-eq">Q₁ [2, 3] × K₁ᵀ [3, 2] → S₁ [2, 2]</div>
+    <p>矩阵相乘的规则是：左矩阵的列数必须等于右矩阵的行数。这里中间的 <strong>3 和 3 对齐</strong>，表示每次点积都使用 3 个特征；输出保留左矩阵的行数 2、右矩阵的列数 2，于是结果是 <code>[2, 2]</code>。</p>
+
+    <h4>2. 把四个分数真的算出来</h4>
+    <div class="numeric-two-col">
+      <div class="numeric-result-card"><h4>头 1：Q 与 K 同方向排列</h4><p class="numeric-inline-math">q₁=[1,0,0]　q₂=[0,1,0]</p><p class="numeric-inline-math">k₁=[1,0,0]　k₂=[0,1,0]</p><div class="numeric-token-table-wrap"><table class="numeric-token-table"><thead><tr><th></th><th>Key 1</th><th>Key 2</th></tr></thead><tbody><tr><th>Query 1</th><td>1</td><td>0</td></tr><tr><th>Query 2</th><td>0</td><td>1</td></tr></tbody></table></div><p><strong>逐格计算：</strong></p><p class="numeric-inline-math">q₁·k₁ = 1×1 + 0×0 + 0×0 = 1</p><p class="numeric-inline-math">q₁·k₂ = 1×0 + 0×1 + 0×0 = 0</p><p class="numeric-inline-math">q₂·k₁ = 0；q₂·k₂ = 1</p></div>
+      <div class="numeric-result-card"><h4>头 2：K 的顺序与头 1 不同</h4><p class="numeric-inline-math">q₁=[1,0,0]　q₂=[0,1,0]</p><p class="numeric-inline-math">k₁=[0,1,0]　k₂=[1,0,0]</p><div class="numeric-token-table-wrap"><table class="numeric-token-table"><thead><tr><th></th><th>Key 1</th><th>Key 2</th></tr></thead><tbody><tr><th>Query 1</th><td>0</td><td>1</td></tr><tr><th>Query 2</th><td>1</td><td>0</td></tr></tbody></table></div><p><strong>逐格计算：</strong></p><p class="numeric-inline-math">q₁·k₁ = 1×0 + 0×1 + 0×0 = 0</p><p class="numeric-inline-math">q₁·k₂ = 1×1 + 0×0 + 0×0 = 1</p><p class="numeric-inline-math">q₂·k₁ = 1；q₂·k₂ = 0</p></div>
+    </div>
+    <p>所以头 1 得到分数矩阵 <code>[[1, 0], [0, 1]]</code>，头 2 得到 <code>[[0, 1], [1, 0]]</code>。一张表的<strong>每一行对应一个 Query</strong>；该行的两个格子分别是这个 Query 对 Key 1、Key 2 的分数。</p>
+
+    <h4>3. 把两个头和样本维度放回去</h4>
+    <p>对两个头分别算出一个 <code>[2, 2]</code> 分数矩阵，再连同 batch 维度 B=1 放在一起，完整形状就是：</p>
+    <div class="formula shape-eq">[B, h, L, dₕ] × [B, h, dₕ, L] → [B, h, L, L]<br>[1, 2, 2, 3] × [1, 2, 3, 2] → [1, 2, 2, 2]</div>
+    <div class="shape-dimension-row" aria-label="注意力分数的四个轴">
+      <div class="shape-dimension"><strong>1</strong><span>样本数 B</span></div>
+      <div class="shape-dimension"><strong>2</strong><span>注意力头数 h</span></div>
+      <div class="shape-dimension"><strong>2</strong><span>Query 数 L</span></div>
+      <div class="shape-dimension"><strong>2</strong><span>Key 数 L</span></div>
+    </div>
+    <div class="callout"><strong>为什么最后的 3 不见了？</strong>那 3 是每个 Query/Key 向量的特征数。在点积中，3 对特征逐项相乘再相加，最后只产生一个分数。所以 3 是“参与计算的内部维度”，不会作为输出维度保留下来；留下的是“有几个 Query”和“有几个 Key”。</div>
+
+    <h4>4. 缩放：把每个分数除以 √dₕ</h4>
+    <p>本例每头的特征数 dₕ=3，因此缩放因子是 <code>√3≈1.732</code>。这一步逐元素执行，不改变矩阵形状。</p>
+    <div class="numeric-two-col">
+      <div class="numeric-math-step"><h4>头 1</h4><p class="numeric-inline-math">原始分数：[[1, 0], [0, 1]]</p><p class="numeric-inline-math">缩放后：[[1/√3, 0], [0, 1/√3]]</p><p class="numeric-inline-math">≈ [[0.577, 0], [0, 0.577]]</p></div>
+      <div class="numeric-math-step"><h4>头 2</h4><p class="numeric-inline-math">原始分数：[[0, 1], [1, 0]]</p><p class="numeric-inline-math">缩放后：[[0, 0.577], [0.577, 0]]</p><p>形状仍然是 <code>[2, 2]</code>；只改变每格的数值。</p></div>
+    </div>
+
+    <h4>5. Softmax：每个 Query 的一行单独归一化</h4>
+    <p>Softmax 沿最后一维（Key 位置）计算。举例来说，头 1 的 Query 1 这一行是 <code>[0.577, 0]</code>：</p>
+    <div class="numeric-math-step"><p class="numeric-inline-math">exp(0.577) ≈ 1.781　　exp(0) = 1</p><p class="numeric-inline-math">总和 ≈ 1.781 + 1 = 2.781</p><p class="numeric-inline-math">权重 ≈ [1.781/2.781, 1/2.781] = [0.640, 0.360]</p><p>这表示 Query 1 约把 64.0% 的注意力分配给 Key 1，把 36.0% 分配给 Key 2。注意力权重是分配比例，不是 Q/K/V 的形状，也不是最终输出。</p></div>
+    <div class="numeric-two-col">
+      <div class="numeric-result-card"><h4>头 1 的权重矩阵</h4><div class="numeric-token-table-wrap"><table class="numeric-token-table"><thead><tr><th></th><th>Key 1</th><th>Key 2</th><th>行和</th></tr></thead><tbody><tr><th>Query 1</th><td>0.640</td><td>0.360</td><td>1.000</td></tr><tr><th>Query 2</th><td>0.360</td><td>0.640</td><td>1.000</td></tr></tbody></table></div></div>
+      <div class="numeric-result-card"><h4>头 2 的权重矩阵</h4><div class="numeric-token-table-wrap"><table class="numeric-token-table"><thead><tr><th></th><th>Key 1</th><th>Key 2</th><th>行和</th></tr></thead><tbody><tr><th>Query 1</th><td>0.360</td><td>0.640</td><td>1.000</td></tr><tr><th>Query 2</th><td>0.640</td><td>0.360</td><td>1.000</td></tr></tbody></table></div></div>
+    </div>
+    <p class="shape-note">分数矩阵、缩放后的分数矩阵、Softmax 权重矩阵的形状都相同，都是 <code>[1, 2, 2, 2]</code>。缩放与 Softmax 都只改数值，不增减行列。</p>
+  </div>
+
+  <div class="shape-deep-dive" aria-labelledby="value-aggregation-title">
+    <h3 id="value-aggregation-title">第三部分：权重如何乘 V？为什么输出又回到 <code>[1, 2, 2, 3]</code>？</h3>
+    <p>到这里为止，Q 和 K 负责算出“该看谁”；真正从别的位置取信息，要用 V。对于一个头来说，权重矩阵是 <code>[2, 2]</code>，V 矩阵是 <code>[2, 3]</code>：两个 Key/Value 位置，每个 Value 有 3 个特征。</p>
+    <div class="formula shape-eq">权重 [2, 2] × V [2, 3] → 输出 [2, 3]</div>
+    <p>矩阵乘法中间的两个维度 2 对齐（权重的 Key 列数 = V 的 Token 行数），输出保留“Query 行数 2”和“每个 Value 的特征数 3”。所以每个头为两个 Query 各输出一个 3 维向量。</p>
+
+    <div class="callout numeric-control-instruction"><strong>下面可以切换 Query：</strong>选择 Token 1 或 Token 2，交互结果会重新计算两个头的分数、缩放值、Softmax 权重与加权输出。先看权重，再看对应的 Value 向量，逐维相乘相加。</div>
+    <div class="control-row"><label for="numeric-query-token">选择当前 Query</label><select id="numeric-query-token" data-numeric-query><option value="0" selected>Token 1</option><option value="1">Token 2</option></select><span></span></div>
+    <p data-numeric-query-summary aria-live="polite">当前查看 Token 1：先分别计算头 1 和头 2 对这个 Query 的注意力，再各自汇总 Value。</p>
+    <div class="numeric-two-col">
+      <div class="numeric-result-card"><h4>头 1：当前 Query 的计算</h4><p><strong>① 原始点积分数</strong></p><pre class="formula" data-numeric-raw="0">[1.000, 0.000]</pre><p><strong>② 除以 √3 ≈ 1.732</strong></p><pre class="formula" data-numeric-scaled="0">[0.577, 0.000]</pre><p><strong>③ Softmax 权重</strong></p><pre class="formula" data-numeric-weights="0">[0.640, 0.360]</pre><p><strong>④ 逐维加权求和</strong></p><pre class="formula" data-numeric-calc="0">0.640 × [2, 1, 3] + 0.360 × [0, 4, 6]
 = [1.281, 2.079, 4.079]</pre></div>
-    <div class="mini"><h4>头 2：本例中更偏向另一个位置</h4><p><strong>原始点积 QKᵀ</strong></p><pre class="formula" data-numeric-raw="1">[0.000, 1.000]</pre><p><strong>除以 √dₕ = √3 ≈ 1.732</strong></p><pre class="formula" data-numeric-scaled="1">[0.000, 0.577]</pre><p><strong>Softmax 后的权重</strong></p><pre class="formula" data-numeric-weights="1">[0.360, 0.640]</pre><p><strong>权重乘以 V 并求和</strong></p><pre class="formula" data-numeric-calc="1">0.360 × [10, 2, 1] + 0.640 × [0, 6, 5]
+      <div class="numeric-result-card"><h4>头 2：当前 Query 的计算</h4><p><strong>① 原始点积分数</strong></p><pre class="formula" data-numeric-raw="1">[0.000, 1.000]</pre><p><strong>② 除以 √3 ≈ 1.732</strong></p><pre class="formula" data-numeric-scaled="1">[0.000, 0.577]</pre><p><strong>③ Softmax 权重</strong></p><pre class="formula" data-numeric-weights="1">[0.360, 0.640]</pre><p><strong>④ 逐维加权求和</strong></p><pre class="formula" data-numeric-calc="1">0.360 × [10, 2, 1] + 0.640 × [0, 6, 5]
 = [3.595, 4.562, 3.562]</pre></div>
+    </div>
+    <div class="numeric-math-step"><h4>把头 1 的输出真的展开一次</h4><p>当前选 Token 1 时，头 1 的权重约为 <code>[0.640, 0.360]</code>，两个 Value 分别是 <code>[2,1,3]</code> 和 <code>[0,4,6]</code>。</p><p class="numeric-inline-math">第 1 个特征：0.640457×2 + 0.359543×0 ≈ 1.281</p><p class="numeric-inline-math">第 2 个特征：0.640457×1 + 0.359543×4 ≈ 2.079</p><p class="numeric-inline-math">第 3 个特征：0.640457×3 + 0.359543×6 ≈ 4.079</p><p>三个维度分别计算，因此输出是一个 3 维向量。这里把权重展开到 6 位小数便于复算；输出结果保留 3 位小数，因此最后一位可能有正常的舍入差异。</p></div>
+
+    <h4>两个 Query 都计算完后，会得到什么？</h4>
+    <p>每个头分别为 Token 1、Token 2 产生 3 维输出。下表列出完整结果；交互选择器只是把其中一行单独拿出来讲解。</p>
+    <div class="numeric-token-table-wrap"><table class="numeric-token-table"><thead><tr><th>输出位置</th><th>头 1 输出（3 维）</th><th>头 2 输出（3 维）</th><th>拼接后（6 维）</th></tr></thead><tbody>
+      <tr><th>Token 1</th><td><code>[1.281, 2.079, 4.079]</code></td><td><code>[3.595, 4.562, 3.562]</code></td><td><code>[1.281, 2.079, 4.079 | 3.595, 4.562, 3.562]</code></td></tr>
+      <tr><th>Token 2</th><td><code>[0.719, 2.921, 4.921]</code></td><td><code>[6.405, 3.438, 2.438]</code></td><td><code>[0.719, 2.921, 4.921 | 6.405, 3.438, 2.438]</code></td></tr>
+    </tbody></table></div>
+    <div class="callout success"><strong>拼接多头：</strong>每个 Token 得到头 1 的 3 个数和头 2 的 3 个数，把它们接起来，得到 6 维向量。两个 Token 叠起来后，合并头前的输出张量形状为 <code>[1, 2, 6]</code>。</div>
+    <div class="formula shape-eq">[B, h, L, dₕ] = [1, 2, 2, 3]<br>权重 × V → [1, 2, 2, 3]<br>合并头 → [1, 2, 6]</div>
+    <div class="callout"><strong>最后一件事：输出投影 Wₒ。</strong>标准多头注意力通常会把各头拼接后再经过一个可学习线性层 Wₒ，让不同头产生的特征可以进一步混合。为便于本例专注于形状与加权求和，这里暂时假设 Wₒ 是单位矩阵 I，所以数值保持不变；真实网络通常不会固定为 I。</div>
+    <div class="numeric-result-card"><h4>当前所选 Token 的两个头拼接结果</h4><pre class="formula" data-numeric-concat>[1.281, 2.079, 4.079 | 3.595, 4.562, 3.562]</pre><span data-numeric-final-explain>当前 Token 的两个头各输出 3 个数，拼接后得到 6 维向量；两个 Token 叠起来，形状是 [1, 2, 6]。</span></div>
   </div>
-  <div class="callout success"><strong>拼接两个头：</strong><pre class="formula" data-numeric-concat>[1.281, 2.079, 4.079 | 3.595, 4.562, 3.562]</pre><span data-numeric-final-explain>当前 Token 的两个头各输出 3 个数，拼接后得到 6 维向量；两个 Token 的结果合起来，形状是 [1, 2, 6]。</span></div>
-  <p class="lab-note">这组数值刻意设计成简单例子，目的是把每一步算清楚，不代表训练后的真实注意力。为了隔离注意力计算，本例暂设输出投影 W<sub>O</sub>=I（单位矩阵），因此数值不变；真实模型中的 W<sub>O</sub> 通常是可学习的，会进一步混合这些特征。</p>
+  <p class="lab-note">本例中的 Q、K、V 是为教学而设计的小数字，不代表 G1 AME 实际训练得到的参数。牢记四个不同阶段：QKᵀ 得到分数；除以 √dₕ 得到缩放分数；Softmax 得到权重；权重乘 V 得到输出特征。</p>
 </div>
+
 <div class="shape-checks"><h3>小测一下：不用死记，试着读形状</h3>
 <div class="quiz-box" data-quiz data-quiz-id="shape-q1"><fieldset><legend>1. 如果输入形状是 <code>[2, 3, 8]</code>，数字 3 表示什么？</legend><div class="quiz-options"><label class="quiz-option"><input type="radio" name="shape-q1" value="a"><span>同时处理 3 组样本</span></label><label class="quiz-option"><input type="radio" name="shape-q1" value="b"><span>每组有 3 个 Token</span></label><label class="quiz-option"><input type="radio" name="shape-q1" value="c"><span>每个 Token 有 3 个特征</span></label><label class="quiz-option"><input type="radio" name="shape-q1" value="d"><span>模型有 3 个注意力头</span></label></div><div class="quiz-feedback" data-feedback hidden></div><div class="quiz-actions"><button type="button" data-quiz-check data-correct="b" data-explanation="形状按 [B, L, D] 排列，第二个数 L 表示每组序列里的 Token 数。">检查答案</button><span class="quiz-score" data-quiz-score></span></div></fieldset></div>
 <div class="quiz-box" data-quiz data-quiz-id="shape-q2"><fieldset><legend>2. 常见配置中，D=8 且头数 h=2，每个头分到多少个特征？</legend><div class="quiz-options"><label class="quiz-option"><input type="radio" name="shape-q2" value="a"><span>2 个</span></label><label class="quiz-option"><input type="radio" name="shape-q2" value="b"><span>4 个</span></label><label class="quiz-option"><input type="radio" name="shape-q2" value="c"><span>8 个</span></label><label class="quiz-option"><input type="radio" name="shape-q2" value="d"><span>16 个</span></label></div><div class="quiz-feedback" data-feedback hidden></div><div class="quiz-actions"><button type="button" data-quiz-check data-correct="b" data-explanation="每头维度 dₕ=D÷h=8÷2=4。两头合计 2×4=8 个特征。">检查答案</button><span class="quiz-score" data-quiz-score></span></div></fieldset></div>
